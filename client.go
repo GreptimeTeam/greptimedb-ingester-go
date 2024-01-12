@@ -18,10 +18,10 @@ import (
 	"context"
 
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
-	"github.com/apache/arrow/go/v13/arrow/flight"
 	"google.golang.org/grpc"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/insert"
 )
 
 // Client helps to Insert/Query data Into/From GreptimeDB. A Client is safe for concurrent
@@ -29,42 +29,28 @@ import (
 type Client struct {
 	cfg *config.Config
 
-	// For `query`, since unary calls have not been implemented for query and only do_get helps
-	flightClient flight.Client
-
 	// For `insert`, unary calls are supported
 	greptimeClient greptimepb.GreptimeDatabaseClient
-
-	// For `Promql` query
-	promqlClient greptimepb.PrometheusGatewayClient
 }
 
 // NewClient helps to create the greptimedb client, which will be responsible Write/Read data To/From GreptimeDB
 func NewClient(cfg *config.Config) (*Client, error) {
-	flightClient, err := flight.NewClientWithMiddleware(cfg.GetGRPCAddr(), nil, nil, cfg.DialOptions...)
-	if err != nil {
-		return nil, err
-	}
-
 	conn, err := grpc.Dial(cfg.GetGRPCAddr(), cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
 
 	greptimeClient := greptimepb.NewGreptimeDatabaseClient(conn)
-	promqlClient := greptimepb.NewPrometheusGatewayClient(conn)
 
 	return &Client{
 		cfg:            cfg,
-		flightClient:   flightClient,
 		greptimeClient: greptimeClient,
-		promqlClient:   promqlClient,
 	}, nil
 }
 
 // Insert helps to insert multiple rows of multiple tables into greptimedb
-func (c *Client) Insert(ctx context.Context, req InsertsRequest) (*greptimepb.GreptimeResponse, error) {
-	request, err := req.build(c.cfg)
+func (c *Client) Insert(ctx context.Context, req insert.InsertsRequest) (*greptimepb.GreptimeResponse, error) {
+	request, err := req.Build(c.cfg)
 	if err != nil {
 		return nil, err
 	}

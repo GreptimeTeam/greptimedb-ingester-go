@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/insert"
 )
 
 // StreamClient is only for inserting
@@ -45,8 +46,8 @@ func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
 	return &StreamClient{client: client, cfg: cfg}, nil
 }
 
-func (c *StreamClient) Send(ctx context.Context, req InsertsRequest) error {
-	request, err := req.build(c.cfg)
+func (c *StreamClient) Send(ctx context.Context, req insert.InsertsRequest) error {
+	request, err := req.Build(c.cfg)
 	if err != nil {
 		return err
 	}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package insert
 
 import (
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
@@ -47,7 +47,7 @@ func (r *InsertsRequest) Append(insert InsertRequest) *InsertsRequest {
 	return r
 }
 
-func (r InsertsRequest) build(cfg *config.Config) (*greptimepb.GreptimeRequest, error) {
+func (r InsertsRequest) Build(cfg *config.Config) (*greptimepb.GreptimeRequest, error) {
 	header, err := r.header.build(cfg)
 	if err != nil {
 		return nil, err
