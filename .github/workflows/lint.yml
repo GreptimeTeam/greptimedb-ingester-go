@@ -1,14 +1,16 @@
 name: golangci-lint
-on: [push]
 
-permissions:
-  contents: read
-  # Optional: allow read access to pull request. Use with `only-new-issues` option.
-  # pull-requests: read
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+  push:
+    branches:
+      - "main"
+
 jobs:
-  golangci:
+  lint:
     if: github.event.pull_request.draft == false
-    name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-go@v3

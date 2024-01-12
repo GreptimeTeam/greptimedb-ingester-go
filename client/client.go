@@ -20,8 +20,8 @@ import (
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"google.golang.org/grpc"
 
+	"github.com/GreptimeTeam/greptimedb-ingester-go/client/insert"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
-	"github.com/GreptimeTeam/greptimedb-ingester-go/insert"
 )
 
 // Client helps to Insert/Query data Into/From GreptimeDB. A Client is safe for concurrent
@@ -33,8 +33,8 @@ type Client struct {
 	greptimeClient greptimepb.GreptimeDatabaseClient
 }
 
-// NewClient helps to create the greptimedb client, which will be responsible Write/Read data To/From GreptimeDB
-func NewClient(cfg *config.Config) (*Client, error) {
+// New helps to create the greptimedb client, which will be responsible Write/Read data To/From GreptimeDB
+func New(cfg *config.Config) (*Client, error) {
 	conn, err := grpc.Dial(cfg.GetGRPCAddr(), cfg.DialOptions...)
 	if err != nil {
 		return nil, err

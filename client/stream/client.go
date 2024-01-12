@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package stream
 
 import (
 	"context"
@@ -20,8 +20,8 @@ import (
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"google.golang.org/grpc"
 
+	"github.com/GreptimeTeam/greptimedb-ingester-go/client/insert"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
-	"github.com/GreptimeTeam/greptimedb-ingester-go/insert"
 )
 
 // StreamClient is only for inserting
@@ -32,7 +32,7 @@ type StreamClient struct {
 
 // NewStreamClient helps to create a stream insert client.
 // If Client has performance issue, you can try the stream client.
-func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
+func New(cfg *config.Config) (*StreamClient, error) {
 	conn, err := grpc.Dial(cfg.GetGRPCAddr(), cfg.DialOptions...)
 	if err != nil {
 		return nil, err
