@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,11 @@ package greptime
 
 import (
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+
+	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
+	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/model"
+	gutil "github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
 type InsertsRequest struct {
@@ -42,14 +47,14 @@ func (r *InsertsRequest) Append(insert InsertRequest) *InsertsRequest {
 	return r
 }
 
-func (r InsertsRequest) build(cfg *Config) (*greptimepb.GreptimeRequest, error) {
+func (r InsertsRequest) build(cfg *config.Config) (*greptimepb.GreptimeRequest, error) {
 	header, err := r.header.build(cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(r.inserts) == 0 {
-		return nil, ErrEmptyInserts
+		return nil, gerr.ErrEmptyInserts
 	}
 
 	reqs := make([]*greptimepb.InsertRequest, 0, len(r.inserts))
@@ -75,7 +80,7 @@ func (r InsertsRequest) build(cfg *Config) (*greptimepb.GreptimeRequest, error) 
 // InsertRequest insert metric to specified table. You can also specify the database in header.
 type InsertRequest struct {
 	table  string
-	metric Metric
+	metric model.Metric
 }
 
 func (r *InsertRequest) WithTable(table string) *InsertRequest {
@@ -83,21 +88,21 @@ func (r *InsertRequest) WithTable(table string) *InsertRequest {
 	return r
 }
 
-func (r *InsertRequest) WithMetric(metric Metric) *InsertRequest {
+func (r *InsertRequest) WithMetric(metric model.Metric) *InsertRequest {
 	r.metric = metric
 	return r
 }
 
 func (r *InsertRequest) RowCount() uint32 {
-	return uint32(len(r.metric.series))
+	return uint32(len(r.metric.GetSeries()))
 }
 
 func (r *InsertRequest) build() (*greptimepb.InsertRequest, error) {
-	if isEmptyString(r.table) {
-		return nil, ErrEmptyTable
+	if gutil.IsEmptyString(r.table) {
+		return nil, gerr.ErrEmptyTable
 	}
 
-	columns, err := r.metric.intoGreptimeColumn()
+	columns, err := r.metric.IntoGreptimeColumn()
 	if err != nil {
 		return nil, err
 	}

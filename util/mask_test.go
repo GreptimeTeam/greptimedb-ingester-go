@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package util
 
 import (
 	"testing"
@@ -25,10 +25,10 @@ import (
 //
 // []byte{1, 4} // LittleEndian
 func TestMask(t *testing.T) {
-	mask := mask{}
-	mask.set(0).set(10)
+	mask := Mask{}
+	mask.Set(0).Set(10)
 
-	b, err := mask.shrink(2)
+	b, err := mask.Shrink(2)
 	assert.Nil(t, err)
 	assert.Equal(t, []byte{1, 4}, b)
 }

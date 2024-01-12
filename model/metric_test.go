@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package model
 
 import (
 	"testing"
@@ -20,6 +20,8 @@ import (
 
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/stretchr/testify/assert"
+
+	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
 )
 
 func TestMetric(t *testing.T) {
@@ -103,7 +105,7 @@ func TestGreptimeColumn(t *testing.T) {
 	assert.Nil(t, m.AddSeries(s1))
 	assert.Nil(t, m.AddSeries(s2))
 
-	cols, err := m.intoGreptimeColumn()
+	cols, err := m.IntoGreptimeColumn()
 	assert.Nil(t, err)
 	assert.Equal(t, 9, len(cols))
 
@@ -300,13 +302,13 @@ func TestSetColumn(t *testing.T) {
 func TestSetTimePrecision(t *testing.T) {
 	m := Metric{}
 	err := m.SetTimePrecision(123)
-	assert.Equal(t, ErrInvalidTimePrecision, err)
+	assert.Equal(t, gerr.ErrInvalidTimePrecision, err)
 }
 
 func TestSetTimeAlias(t *testing.T) {
 	m := Metric{}
 	err := m.SetTimestampAlias("")
-	assert.Equal(t, ErrEmptyKey, err)
+	assert.Equal(t, gerr.ErrEmptyKey, err)
 }
 
 func TestGetTags(t *testing.T) {

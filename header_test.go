@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,23 +19,26 @@ import (
 
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
+	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
 )
 
 func TestHeaderBuild(t *testing.T) {
 	h := &reqHeader{}
 
-	gh, err := h.build(&Config{})
-	assert.ErrorIs(t, err, ErrEmptyDatabase)
+	gh, err := h.build(&config.Config{})
+	assert.ErrorIs(t, err, gerr.ErrEmptyDatabase)
 	assert.Nil(t, gh)
 
-	gh, err = h.build(&Config{Database: "database"})
+	gh, err = h.build(&config.Config{Database: "database"})
 	assert.Nil(t, err)
 	assert.Equal(t, &greptimepb.RequestHeader{
 		Dbname: "database",
 	}, gh)
 
 	h.database = "db_in_header"
-	gh, err = h.build(&Config{Database: "database"})
+	gh, err = h.build(&config.Config{Database: "database"})
 	assert.Nil(t, err)
 	assert.Equal(t, &greptimepb.RequestHeader{
 		Dbname: "db_in_header",

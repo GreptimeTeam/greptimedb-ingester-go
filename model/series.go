@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package model
 
 import (
 	"fmt"
 	"time"
 
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+
+	gutil "github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
 type column struct {
@@ -200,7 +202,7 @@ func (s *Series) GetTimestamp(key string) (time.Time, bool) {
 }
 
 func (s *Series) add(name string, val any, semantic greptimepb.SemanticType) error {
-	key, err := toColumnName(name)
+	key, err := gutil.ToColumnName(name)
 	if err != nil {
 		return err
 	}
@@ -209,13 +211,13 @@ func (s *Series) add(name string, val any, semantic greptimepb.SemanticType) err
 		s.columns = map[string]column{}
 	}
 
-	v, err := convert(val)
+	v, err := gutil.Convert(val)
 	if err != nil {
 		return fmt.Errorf("add tag err: %w", err)
 	}
 
 	newCol := column{
-		typ:      v.typ,
+		typ:      v.Type,
 		semantic: semantic,
 	}
 	if col, seen := s.columns[key]; seen {
@@ -229,7 +231,7 @@ func (s *Series) add(name string, val any, semantic greptimepb.SemanticType) err
 	if s.vals == nil {
 		s.vals = map[string]any{}
 	}
-	s.vals[key] = v.val
+	s.vals[key] = v.Val
 
 	return nil
 }

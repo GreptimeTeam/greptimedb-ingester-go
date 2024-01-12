@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package config
 
 import (
 	"fmt"
 
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"google.golang.org/grpc"
+
+	gutil "github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
 // Config is to define how the Client behaves.
@@ -46,8 +48,8 @@ type Config struct {
 	CallOptions []grpc.CallOption
 }
 
-// NewCfg helps to init Config with host only
-func NewCfg(host string) *Config {
+// New helps to init Config with host only
+func New(host string) *Config {
 	return &Config{
 		Host: host,
 		Port: 4001,
@@ -98,8 +100,8 @@ func (c *Config) WithCallOptions(options ...grpc.CallOption) *Config {
 }
 
 // buildAuthHeader only supports Basic Auth so far
-func (c *Config) buildAuthHeader() *greptimepb.AuthHeader {
-	if isEmptyString(c.Username) || isEmptyString(c.Password) {
+func (c *Config) BuildAuthHeader() *greptimepb.AuthHeader {
+	if gutil.IsEmptyString(c.Username) || gutil.IsEmptyString(c.Password) {
 		return nil
 	}
 
@@ -114,6 +116,6 @@ func (c *Config) buildAuthHeader() *greptimepb.AuthHeader {
 
 }
 
-func (c *Config) getGRPCAddr() string {
+func (c *Config) GetGRPCAddr() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }

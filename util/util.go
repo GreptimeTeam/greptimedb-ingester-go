@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package util
 
 import (
 	"fmt"
@@ -21,18 +21,20 @@ import (
 
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/stoewer/go-strcase"
+
+	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
 )
 
-type value struct {
-	val any
-	typ greptimepb.ColumnDataType
+type Value struct {
+	Val  any
+	Type greptimepb.ColumnDataType
 }
 
-func newValue(val any, typ greptimepb.ColumnDataType) *value {
-	return &value{val, typ}
+func newValue(val any, typ greptimepb.ColumnDataType) *Value {
+	return &Value{val, typ}
 }
 
-func convert(v any) (*value, error) {
+func Convert(v any) (*Value, error) {
 	switch t := v.(type) {
 	case bool:
 		return newValue(t, greptimepb.ColumnDataType_BOOLEAN), nil
@@ -104,14 +106,14 @@ func convert(v any) (*value, error) {
 	}
 }
 
-func isValidPrecision(t time.Duration) bool {
+func IsValidPrecision(t time.Duration) bool {
 	return t == time.Second ||
 		t == time.Millisecond ||
 		t == time.Microsecond ||
 		t == time.Nanosecond
 }
 
-func precisionToDataType(d time.Duration) (greptimepb.ColumnDataType, error) {
+func PrecisionToDataType(d time.Duration) (greptimepb.ColumnDataType, error) {
 	// if the precision has not been set, use default precision `time.Millisecond`
 	if d == 0 {
 		d = time.Millisecond
@@ -126,19 +128,19 @@ func precisionToDataType(d time.Duration) (greptimepb.ColumnDataType, error) {
 	case time.Nanosecond:
 		return greptimepb.ColumnDataType_TIMESTAMP_NANOSECOND, nil
 	default:
-		return 0, ErrInvalidTimePrecision
+		return 0, gerr.ErrInvalidTimePrecision
 	}
 }
 
-func isEmptyString(s string) bool {
+func IsEmptyString(s string) bool {
 	return len(strings.TrimSpace(s)) == 0
 }
 
-func toColumnName(s string) (string, error) {
+func ToColumnName(s string) (string, error) {
 	s = strings.TrimSpace(s)
 
 	if len(s) == 0 {
-		return "", ErrEmptyKey
+		return "", gerr.ErrEmptyKey
 	}
 
 	if len(s) >= 100 {

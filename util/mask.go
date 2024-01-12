@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package util
 
 import (
 	"bytes"
@@ -22,19 +22,19 @@ import (
 )
 
 // Mask is help to set null bits.
-type mask struct {
+type Mask struct {
 	bs bitset.BitSet
 }
 
 // set is to set which position is to be set to 1
-func (n *mask) set(idx uint) *mask {
+func (n *Mask) Set(idx uint) *Mask {
 	n.bs.Set(idx)
 	return n
 }
 
 // shrink is to help to generate the bytes number the caller is interested
 // via LittleEndian
-func (n *mask) shrink(bSize int) ([]byte, error) {
+func (n *Mask) Shrink(bSize int) ([]byte, error) {
 	if n.bs.Len() == 0 {
 		return nil, nil
 	}

@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,13 +20,14 @@ import (
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/apache/arrow/go/v13/arrow/flight"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
+
+	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 )
 
 // Client helps to Insert/Query data Into/From GreptimeDB. A Client is safe for concurrent
 // use by multiple goroutines,you can have one Client instance in your application.
 type Client struct {
-	cfg *Config
+	cfg *config.Config
 
 	// For `query`, since unary calls have not been implemented for query and only do_get helps
 	flightClient flight.Client
@@ -39,13 +40,13 @@ type Client struct {
 }
 
 // NewClient helps to create the greptimedb client, which will be responsible Write/Read data To/From GreptimeDB
-func NewClient(cfg *Config) (*Client, error) {
-	flightClient, err := flight.NewClientWithMiddleware(cfg.getGRPCAddr(), nil, nil, cfg.DialOptions...)
+func NewClient(cfg *config.Config) (*Client, error) {
+	flightClient, err := flight.NewClientWithMiddleware(cfg.GetGRPCAddr(), nil, nil, cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(cfg.getGRPCAddr(), cfg.DialOptions...)
+	conn, err := grpc.Dial(cfg.GetGRPCAddr(), cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -68,37 +69,4 @@ func (c *Client) Insert(ctx context.Context, req InsertsRequest) (*greptimepb.Gr
 		return nil, err
 	}
 	return c.greptimeClient.Handle(ctx, request, c.cfg.CallOptions...)
-}
-
-// Query helps to retrieve data from greptimedb
-func (c *Client) Query(ctx context.Context, req QueryRequest) (*Metric, error) {
-	request, err := req.buildGreptimeRequest(c.cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := proto.Marshal(request)
-	if err != nil {
-		return nil, err
-	}
-	sr, err := c.flightClient.DoGet(ctx, &flight.Ticket{Ticket: b}, c.cfg.CallOptions...)
-	if err != nil {
-		return nil, err
-	}
-
-	reader, err := flight.NewRecordReader(sr)
-	if err != nil {
-		return nil, err
-	}
-
-	return buildMetricFromReader(reader)
-}
-
-// PromqlQuery helps to retrieve data from greptimedb via InstantQuery or RangeQuery
-func (c *Client) PromqlQuery(ctx context.Context, req QueryRequest) (*greptimepb.PromqlResponse, error) {
-	request, err := req.buildPromqlRequest(c.cfg)
-	if err != nil {
-		return nil, err
-	}
-	return c.promqlClient.Handle(ctx, request, c.cfg.CallOptions...)
 }
