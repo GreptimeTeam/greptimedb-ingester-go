@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package model
 
 import (
 	"fmt"
@@ -25,16 +25,16 @@ import (
 
 func TestSeries(t *testing.T) {
 	s := Series{}
-	s.AddTag("Tag1", "tag val")
-	s.AddTag("tag2 ", true)
-	s.AddTag(" tag3", int32(32))
-	s.AddTag("tag4", float64(32.0))
+	assert.Nil(t, s.AddTag("Tag1", "tag val"))
+	assert.Nil(t, s.AddTag("tag2 ", true))
+	assert.Nil(t, s.AddTag(" tag3", int32(32)))
+	assert.Nil(t, s.AddTag("tag4", float64(32.0)))
 	timestamp := time.Now()
-	s.SetTimestamp(timestamp)
-	s.AddField("field1", []byte("field val"))
-	s.AddField("field2", float32(32.0))
-	s.AddField("field3", uint8(8))
-	s.AddField("field4", uint64(64))
+	assert.Nil(t, s.SetTimestamp(timestamp))
+	assert.Nil(t, s.AddField("field1", []byte("field val")))
+	assert.Nil(t, s.AddField("field2", float32(32.0)))
+	assert.Nil(t, s.AddField("field3", uint8(8)))
+	assert.Nil(t, s.AddField("field4", uint64(64)))
 
 	// check columns
 	assert.Equal(t, 8, len(s.columns))
@@ -168,5 +168,4 @@ func TestSeriesAddTypedTagAndField(t *testing.T) {
 
 	err = s.AddBytesField("bytes_field", []byte("1"))
 	assert.Nil(t, err)
-
 }

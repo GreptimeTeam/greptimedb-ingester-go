@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package model
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"time"
 
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
-	"github.com/apache/arrow/go/v13/arrow"
-	"github.com/apache/arrow/go/v13/arrow/array"
-	"github.com/apache/arrow/go/v13/arrow/flight"
+
+	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
+	gutil "github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
 // Metric represents multiple rows of data, and also Metric can specify
@@ -50,125 +49,6 @@ func (m *Metric) GetSeries() []Series {
 	return m.series
 }
 
-func buildMetricFromReader(r *flight.Reader) (*Metric, error) {
-	metric := Metric{}
-
-	if r == nil {
-		return nil, errors.New("Internal Error, empty reader pointer")
-	}
-
-	fields := r.Schema().Fields()
-	for r.Next() {
-		record := r.Record()
-		for i := 0; i < int(record.NumRows()); i++ {
-			series := Series{}
-			for j := 0; j < int(record.NumCols()); j++ {
-				column := record.Column(j)
-				colVal, err := fromColumn(column, i)
-				if err != nil {
-					return nil, err
-				}
-				series.AddField(fields[j].Name, colVal)
-			}
-			if err := metric.AddSeries(series); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return &metric, nil
-}
-
-func extractPrecision(field *arrow.Field) (time.Duration, error) {
-	if field == nil {
-		return 0, errors.New("field should not be empty")
-	}
-	dataType, ok := field.Type.(*arrow.TimestampType)
-	if !ok {
-		return 0, fmt.Errorf("unsupported arrow field type '%s'", field.Type.Name())
-	}
-	switch dataType.Unit {
-	case arrow.Microsecond:
-		return time.Microsecond, nil
-	case arrow.Millisecond:
-		return time.Millisecond, nil
-	case arrow.Second:
-		return time.Second, nil
-	case arrow.Nanosecond:
-		return time.Nanosecond, nil
-	default:
-		return 0, fmt.Errorf("unsupported arrow type '%s'", field.Type.Name())
-	}
-
-}
-
-// fromColumn retrieves arrow value from the column at idx position
-func fromColumn(column arrow.Array, idx int) (any, error) {
-	if column.IsNull(idx) {
-		return nil, nil
-	}
-	switch typedColumn := column.(type) {
-	case *array.Int64:
-		return typedColumn.Value(idx), nil
-	case *array.Int32:
-		return typedColumn.Value(idx), nil
-	case *array.Int16:
-		return typedColumn.Value(idx), nil
-	case *array.Int8:
-		return typedColumn.Value(idx), nil
-	case *array.Uint64:
-		return typedColumn.Value(idx), nil
-	case *array.Uint32:
-		return typedColumn.Value(idx), nil
-	case *array.Uint16:
-		return typedColumn.Value(idx), nil
-	case *array.Uint8:
-		return typedColumn.Value(idx), nil
-	case *array.Float64:
-		return typedColumn.Value(idx), nil
-	case *array.Float32:
-		return typedColumn.Value(idx), nil
-	case *array.String:
-		return typedColumn.Value(idx), nil
-	case *array.Boolean:
-		return typedColumn.Value(idx), nil
-	case *array.Binary:
-		return typedColumn.Value(idx), nil
-	case *array.LargeBinary:
-		return typedColumn.Value(idx), nil
-	case *array.FixedSizeBinary:
-		return typedColumn.Value(idx), nil
-	case *array.Time32:
-		return typedColumn.Value(idx), nil
-	case *array.Time64:
-		return typedColumn.Value(idx), nil
-	case *array.Date32:
-		return typedColumn.Value(idx), nil
-	case *array.Date64:
-		return typedColumn.Value(idx), nil
-	case *array.Timestamp:
-		dataType, ok := column.DataType().(*arrow.TimestampType)
-		if !ok {
-			return nil, fmt.Errorf("unsupported arrow timestamp type '%T' for '%s'", typedColumn, column.DataType().Name())
-		}
-		value := int64(typedColumn.Value(idx))
-		switch dataType.Unit {
-		case arrow.Microsecond:
-			return time.UnixMicro(value), nil
-		case arrow.Millisecond:
-			return time.UnixMilli(value), nil
-		case arrow.Second:
-			return time.Unix(value, 0), nil
-		case arrow.Nanosecond:
-			return time.Unix(0, value), nil
-		default:
-			return nil, fmt.Errorf("unsupported arrow timestamp type '%T' for '%s'", typedColumn, column.DataType().Name())
-		}
-	default:
-		return nil, fmt.Errorf("unsupported arrow type '%T' for '%s'", typedColumn, column.DataType().Name())
-	}
-}
-
 // SetTimePrecision set precision for Metric. Valid durations include:
 //   - time.Nanosecond
 //   - time.Microsecond
@@ -180,8 +60,8 @@ func fromColumn(column arrow.Array, idx int) (any, error) {
 //   - once the precision has been set, it can not be changed
 //   - insert will fail if precision does not match with the existing precision of the schema in greptimedb
 func (m *Metric) SetTimePrecision(precision time.Duration) error {
-	if !isValidPrecision(precision) {
-		return ErrInvalidTimePrecision
+	if !gutil.IsValidPrecision(precision) {
+		return gerr.ErrInvalidTimePrecision
 	}
 	m.timestampPrecision = precision
 	return nil
@@ -189,7 +69,7 @@ func (m *Metric) SetTimePrecision(precision time.Duration) error {
 
 // SetTimestampAlias helps to specify the timestamp column name, default is ts.
 func (m *Metric) SetTimestampAlias(alias string) error {
-	alias, err := toColumnName(alias)
+	alias, err := gutil.ToColumnName(alias)
 	if err != nil {
 		return err
 	}
@@ -242,9 +122,9 @@ func (m *Metric) AddSeries(s Series) error {
 	return nil
 }
 
-func (m *Metric) intoGreptimeColumn() ([]*greptimepb.Column, error) {
+func (m *Metric) IntoGreptimeColumn() ([]*greptimepb.Column, error) {
 	if len(m.series) == 0 {
-		return nil, ErrNoSeriesInMetric
+		return nil, gerr.ErrNoSeriesInMetric
 	}
 
 	result, err := m.intoDataColumns()
@@ -267,7 +147,7 @@ func (m *Metric) nullMaskByteSize() int {
 
 // intoDataColumns does not contain timestamp semantic column
 func (m *Metric) intoDataColumns() ([]*greptimepb.Column, error) {
-	nullMasks := map[string]*mask{}
+	nullMasks := map[string]*gutil.Mask{}
 	mappedCols := map[string]*greptimepb.Column{}
 	for name, col := range m.columns {
 		column := greptimepb.Column{
@@ -289,10 +169,10 @@ func (m *Metric) intoDataColumns() ([]*greptimepb.Column, error) {
 			} else {
 				nullMask, exist := nullMasks[name]
 				if !exist {
-					nullMask = &mask{}
+					nullMask = &gutil.Mask{}
 					nullMasks[name] = nullMask
 				}
-				nullMask.set(uint(rowIdx))
+				nullMask.Set(uint(rowIdx))
 			}
 		}
 	}
@@ -312,7 +192,7 @@ func (m *Metric) intoDataColumns() ([]*greptimepb.Column, error) {
 }
 
 func (m *Metric) intoTimestampColumn() (*greptimepb.Column, error) {
-	datatype, err := precisionToDataType(m.timestampPrecision)
+	datatype, err := gutil.PrecisionToDataType(m.timestampPrecision)
 	if err != nil {
 		return nil, err
 	}
@@ -323,21 +203,29 @@ func (m *Metric) intoTimestampColumn() (*greptimepb.Column, error) {
 		Values:       &greptimepb.Column_Values{},
 		NullMask:     nil,
 	}
-	nullMask := mask{}
+	nullMask := gutil.Mask{}
 	for _, s := range m.series {
 		switch datatype {
 		case greptimepb.ColumnDataType_TIMESTAMP_SECOND:
-			setColumn(tsColumn, s.timestamp.Unix())
+			if err := setColumn(tsColumn, s.timestamp.Unix()); err != nil {
+				return nil, err
+			}
 		case greptimepb.ColumnDataType_TIMESTAMP_MICROSECOND:
-			setColumn(tsColumn, s.timestamp.UnixMicro())
+			if err := setColumn(tsColumn, s.timestamp.UnixMicro()); err != nil {
+				return nil, err
+			}
 		case greptimepb.ColumnDataType_TIMESTAMP_NANOSECOND:
-			setColumn(tsColumn, s.timestamp.UnixNano())
+			if err := setColumn(tsColumn, s.timestamp.UnixNano()); err != nil {
+				return nil, err
+			}
 		default: // greptimepb.ColumnDataType_TIMESTAMP_MILLISECOND
-			setColumn(tsColumn, s.timestamp.UnixMilli())
+			if err := setColumn(tsColumn, s.timestamp.UnixMilli()); err != nil {
+				return nil, err
+			}
 		}
 	}
 
-	if b, err := nullMask.shrink(m.nullMaskByteSize()); err != nil {
+	if b, err := nullMask.Shrink(m.nullMaskByteSize()); err != nil {
 		return nil, err
 	} else {
 		tsColumn.NullMask = b
@@ -388,9 +276,9 @@ func setColumn(col *greptimepb.Column, val any) error {
 	return nil
 }
 
-func setNullMask(cols map[string]*greptimepb.Column, masks map[string]*mask, size int) error {
+func setNullMask(cols map[string]*greptimepb.Column, masks map[string]*gutil.Mask, size int) error {
 	for name, mask := range masks {
-		b, err := mask.shrink(size)
+		b, err := mask.Shrink(size)
 		if err != nil {
 			return err
 		}

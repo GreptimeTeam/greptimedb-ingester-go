@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,24 +16,28 @@ package greptime
 
 import (
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+
+	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
+	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
+	gutil "github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
 type reqHeader struct {
 	database string
 }
 
-func (h *reqHeader) build(cfg *Config) (*greptimepb.RequestHeader, error) {
-	if isEmptyString(h.database) {
+func (h *reqHeader) build(cfg *config.Config) (*greptimepb.RequestHeader, error) {
+	if gutil.IsEmptyString(h.database) {
 		h.database = cfg.Database
 	}
 
-	if isEmptyString(h.database) {
-		return nil, ErrEmptyDatabase
+	if gutil.IsEmptyString(h.database) {
+		return nil, gerr.ErrEmptyDatabase
 	}
 
 	header := &greptimepb.RequestHeader{
 		Dbname:        h.database,
-		Authorization: cfg.buildAuthHeader(),
+		Authorization: cfg.BuildAuthHeader(),
 	}
 
 	return header, nil
@@ -53,7 +57,7 @@ func (h RespHeader) IsRateLimited() bool {
 }
 
 func (h RespHeader) IsNil() bool {
-	return h.Code == 0 && isEmptyString(h.Msg)
+	return h.Code == 0 && gutil.IsEmptyString(h.Msg)
 }
 
 type getRespHeader interface {

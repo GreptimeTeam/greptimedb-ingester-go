@@ -1,4 +1,4 @@
-module github.com/GreptimeTeam/greptimedb-client-go
+module github.com/GreptimeTeam/greptimedb-ingester-go
 
 go 1.20
 

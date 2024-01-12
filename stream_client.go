@@ -1,4 +1,4 @@
-// Copyright 2023 Greptime Team
+// Copyright 2024 Greptime Team
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,18 +19,20 @@ import (
 
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"google.golang.org/grpc"
+
+	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 )
 
 // StreamClient is only for inserting
 type StreamClient struct {
 	client greptimepb.GreptimeDatabase_HandleRequestsClient
-	cfg    *Config
+	cfg    *config.Config
 }
 
 // NewStreamClient helps to create a stream insert client.
 // If Client has performance issue, you can try the stream client.
-func NewStreamClient(cfg *Config) (*StreamClient, error) {
-	conn, err := grpc.Dial(cfg.getGRPCAddr(), cfg.DialOptions...)
+func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
+	conn, err := grpc.Dial(cfg.GetGRPCAddr(), cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
