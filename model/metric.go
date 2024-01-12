@@ -207,13 +207,21 @@ func (m *Metric) intoTimestampColumn() (*greptimepb.Column, error) {
 	for _, s := range m.series {
 		switch datatype {
 		case greptimepb.ColumnDataType_TIMESTAMP_SECOND:
-			setColumn(tsColumn, s.timestamp.Unix())
+			if err := setColumn(tsColumn, s.timestamp.Unix()); err != nil {
+				return nil, err
+			}
 		case greptimepb.ColumnDataType_TIMESTAMP_MICROSECOND:
-			setColumn(tsColumn, s.timestamp.UnixMicro())
+			if err := setColumn(tsColumn, s.timestamp.UnixMicro()); err != nil {
+				return nil, err
+			}
 		case greptimepb.ColumnDataType_TIMESTAMP_NANOSECOND:
-			setColumn(tsColumn, s.timestamp.UnixNano())
+			if err := setColumn(tsColumn, s.timestamp.UnixNano()); err != nil {
+				return nil, err
+			}
 		default: // greptimepb.ColumnDataType_TIMESTAMP_MILLISECOND
-			setColumn(tsColumn, s.timestamp.UnixMilli())
+			if err := setColumn(tsColumn, s.timestamp.UnixMilli()); err != nil {
+				return nil, err
+			}
 		}
 	}
 
