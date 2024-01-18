@@ -5,6 +5,8 @@
 
 # GreptimeDB Go Ingester
 
+NOTE: the project is still in its early stages.
+
 Provide API for using GreptimeDB client in Go.
 
 ## Installation
