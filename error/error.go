@@ -31,6 +31,6 @@ var (
 	ErrEmptyRange           = errors.New("start and end is required in range promql")
 	ErrInvalidTimePrecision = errors.New("precision of timestamp is not valid")
 	ErrNoSeriesInMetric     = errors.New("empty series in Metric")
-	ErrNotImplemented       = errors.New("not implemented!")
-	ErrSqlInPromql          = errors.New("Sql can not be used as Promql")
+
+	ErrColumnNotSet = errors.New("column not set, please call AddColumn first")
 )

@@ -19,7 +19,7 @@ import (
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
-	"github.com/GreptimeTeam/greptimedb-ingester-go/model"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	gutil "github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
@@ -80,7 +80,7 @@ func (r InsertsRequest) Build(cfg *config.Config) (*greptimepb.GreptimeRequest, 
 // InsertRequest insert metric to specified table. You can also specify the database in header.
 type InsertRequest struct {
 	table  string
-	metric model.Metric
+	metric table.Metric
 }
 
 func (r *InsertRequest) WithTable(table string) *InsertRequest {
@@ -88,7 +88,7 @@ func (r *InsertRequest) WithTable(table string) *InsertRequest {
 	return r
 }
 
-func (r *InsertRequest) WithMetric(metric model.Metric) *InsertRequest {
+func (r *InsertRequest) WithMetric(metric table.Metric) *InsertRequest {
 	r.metric = metric
 	return r
 }

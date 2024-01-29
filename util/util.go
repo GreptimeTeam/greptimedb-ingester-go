@@ -34,78 +34,6 @@ func newValue(val any, typ greptimepb.ColumnDataType) *Value {
 	return &Value{val, typ}
 }
 
-func Convert(v any) (*Value, error) {
-	switch t := v.(type) {
-	case bool:
-		return newValue(t, greptimepb.ColumnDataType_BOOLEAN), nil
-	case string:
-		return newValue(t, greptimepb.ColumnDataType_STRING), nil
-	case []byte:
-		return newValue(t, greptimepb.ColumnDataType_BINARY), nil
-	case float64:
-		return newValue(t, greptimepb.ColumnDataType_FLOAT64), nil
-	case float32:
-		return newValue(t, greptimepb.ColumnDataType_FLOAT32), nil
-	case uint:
-		return newValue(uint64(t), greptimepb.ColumnDataType_UINT64), nil
-	case uint64:
-		return newValue(t, greptimepb.ColumnDataType_UINT64), nil
-	case uint32:
-		return newValue(t, greptimepb.ColumnDataType_UINT32), nil
-	case uint16:
-		return newValue(t, greptimepb.ColumnDataType_UINT16), nil
-	case uint8:
-		return newValue(t, greptimepb.ColumnDataType_UINT8), nil
-	case int:
-		return newValue(int64(t), greptimepb.ColumnDataType_INT64), nil
-	case int64:
-		return newValue(t, greptimepb.ColumnDataType_INT64), nil
-	case int32:
-		return newValue(t, greptimepb.ColumnDataType_INT32), nil
-	case int16:
-		return newValue(t, greptimepb.ColumnDataType_INT16), nil
-	case int8:
-		return newValue(t, greptimepb.ColumnDataType_INT8), nil
-	case time.Time:
-		return newValue(t, greptimepb.ColumnDataType_DATETIME), nil
-
-	case *bool:
-		return newValue(*t, greptimepb.ColumnDataType_BOOLEAN), nil
-	case *string:
-		return newValue(*t, greptimepb.ColumnDataType_STRING), nil
-	case *[]byte:
-		return newValue(*t, greptimepb.ColumnDataType_BINARY), nil
-	case *float64:
-		return newValue(*t, greptimepb.ColumnDataType_FLOAT64), nil
-	case *float32:
-		return newValue(*t, greptimepb.ColumnDataType_FLOAT32), nil
-	case *uint:
-		return newValue(uint64(*t), greptimepb.ColumnDataType_UINT64), nil
-	case *uint64:
-		return newValue(*t, greptimepb.ColumnDataType_UINT64), nil
-	case *uint32:
-		return newValue(*t, greptimepb.ColumnDataType_UINT32), nil
-	case *uint16:
-		return newValue(*t, greptimepb.ColumnDataType_UINT16), nil
-	case *uint8:
-		return newValue(*t, greptimepb.ColumnDataType_UINT8), nil
-	case *int:
-		return newValue(int64(*t), greptimepb.ColumnDataType_INT64), nil
-	case *int64:
-		return newValue(*t, greptimepb.ColumnDataType_INT64), nil
-	case *int32:
-		return newValue(*t, greptimepb.ColumnDataType_INT32), nil
-	case *int16:
-		return newValue(*t, greptimepb.ColumnDataType_INT16), nil
-	case *int8:
-		return newValue(*t, greptimepb.ColumnDataType_INT8), nil
-	case *time.Time:
-		return newValue(*t, greptimepb.ColumnDataType_DATETIME), nil
-	default:
-		return nil, fmt.Errorf("the type '%T' is not supported", t)
-	}
-}
-
 func IsValidPrecision(t time.Duration) bool {
 	return t == time.Second ||
 		t == time.Millisecond ||
@@ -144,7 +72,7 @@ func ToColumnName(s string) (string, error) {
 	}
 
 	if len(s) >= 100 {
-		return "", fmt.Errorf("the length of column name CAN NOT be longer than 100. %s", s)
+		return "", fmt.Errorf("the length of column name CAN NOT be longer than 100. %q", s)
 	}
 
 	return strings.ToLower(strcase.SnakeCase(s)), nil
