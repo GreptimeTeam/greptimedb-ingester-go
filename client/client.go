@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package client
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/insert"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
 // Client helps to Insert/Query data Into/From GreptimeDB. A Client is safe for concurrent
@@ -34,7 +35,7 @@ type Client struct {
 }
 
 // NewClient helps to create the greptimedb client, which will be responsible Write/Read data To/From GreptimeDB
-func NewClient(cfg *config.Config) (*Client, error) {
+func New(cfg *config.Config) (*Client, error) {
 	conn, err := grpc.Dial(cfg.GetGRPCAddr(), cfg.DialOptions...)
 	if err != nil {
 		return nil, err
@@ -48,8 +49,9 @@ func NewClient(cfg *config.Config) (*Client, error) {
 	}, nil
 }
 
-// Insert helps to insert multiple rows of multiple tables into greptimedb
-func (c *Client) Insert(ctx context.Context, req insert.InsertsRequest) (*greptimepb.GreptimeResponse, error) {
+func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*greptimepb.GreptimeResponse, error) {
+	req := insert.RowInsertsRequest{}
+	req.AddTable(tables...)
 	request, err := req.Build(c.cfg)
 	if err != nil {
 		return nil, err

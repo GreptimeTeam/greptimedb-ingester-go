@@ -19,18 +19,12 @@ import (
 )
 
 var (
-	ErrEmptyDatabase        = errors.New("name of database should not be empty")
-	ErrEmptyTable           = errors.New("name of table should not be be empty")
-	ErrEmptyInserts         = errors.New("at least one insert is required in InsertsRequest")
+	ErrEmptyDatabaseName    = errors.New("name of database should not be empty")
+	ErrEmptyTableName       = errors.New("name of table should not be be empty")
+	ErrEmptyColumnName      = errors.New("name of column should not be be empty")
+	ErrEmptyTables          = errors.New("please add at least one record before sending insert request")
 	ErrEmptyTimestamp       = errors.New("timestamp should not be empty")
-	ErrEmptyQuery           = errors.New("query should not be empty, assign Sql, InstantPromql or RangePromql")
-	ErrEmptyKey             = errors.New("key should not be empty")
-	ErrEmptySql             = errors.New("sql is required in querying")
-	ErrEmptyPromql          = errors.New("promql is required in promql querying")
-	ErrEmptyStep            = errors.New("step is required in range promql")
-	ErrEmptyRange           = errors.New("start and end is required in range promql")
 	ErrInvalidTimePrecision = errors.New("precision of timestamp is not valid")
-	ErrNoSeriesInMetric     = errors.New("empty series in Metric")
 
 	ErrColumnNotSet = errors.New("column not set, please call AddColumn first")
 )

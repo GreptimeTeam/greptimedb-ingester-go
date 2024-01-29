@@ -15,7 +15,7 @@ func New(name string) *Schema {
 	return &Schema{Name: name}
 }
 
-func (s *Schema) IsZero() bool {
+func (s *Schema) IsEmpty() bool {
 	return s.Columns == nil || len(s.Columns) == 0
 }
 

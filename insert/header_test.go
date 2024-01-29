@@ -28,7 +28,7 @@ func TestHeaderBuild(t *testing.T) {
 	h := &reqHeader{}
 
 	gh, err := h.build(&config.Config{})
-	assert.ErrorIs(t, err, gerr.ErrEmptyDatabase)
+	assert.ErrorIs(t, err, gerr.ErrEmptyDatabaseName)
 	assert.Nil(t, gh)
 
 	gh, err = h.build(&config.Config{Database: "database"})

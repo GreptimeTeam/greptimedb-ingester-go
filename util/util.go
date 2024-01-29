@@ -25,15 +25,6 @@ import (
 	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
 )
 
-type Value struct {
-	Val  any
-	Type greptimepb.ColumnDataType
-}
-
-func newValue(val any, typ greptimepb.ColumnDataType) *Value {
-	return &Value{val, typ}
-}
-
 func IsValidPrecision(t time.Duration) bool {
 	return t == time.Second ||
 		t == time.Millisecond ||
@@ -65,10 +56,8 @@ func IsEmptyString(s string) bool {
 }
 
 func ToColumnName(s string) (string, error) {
-	s = strings.TrimSpace(s)
-
-	if len(s) == 0 {
-		return "", gerr.ErrEmptyKey
+	if IsEmptyString(s) {
+		return "", gerr.ErrEmptyColumnName
 	}
 
 	if len(s) >= 100 {

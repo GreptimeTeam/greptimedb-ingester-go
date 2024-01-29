@@ -12,7 +12,7 @@ import (
 
 type Table struct {
 	Schema schema.Schema
-	rows   gpb.Rows
+	Rows   *gpb.Rows
 }
 
 func New(schema schema.Schema) *Table {
@@ -23,7 +23,7 @@ func New(schema schema.Schema) *Table {
 
 	return &Table{
 		Schema: schema,
-		rows: gpb.Rows{
+		Rows: &gpb.Rows{
 			Schema: colSchema,
 			Rows:   make([]*gpb.Row, 0),
 		},
@@ -31,16 +31,16 @@ func New(schema schema.Schema) *Table {
 }
 
 func (t *Table) addRow(row *gpb.Row) {
-	if t.rows.Rows == nil {
-		t.rows.Rows = make([]*gpb.Row, 0)
+	if t.Rows.Rows == nil {
+		t.Rows.Rows = make([]*gpb.Row, 0)
 	}
 
-	t.rows.Rows = append(t.rows.Rows, row)
+	t.Rows.Rows = append(t.Rows.Rows, row)
 }
 
 // AddRow will check if the input matches the schema
 func (t *Table) AddRow(inputs ...any) error {
-	if t.Schema.IsZero() {
+	if t.Schema.IsEmpty() {
 		return err.ErrColumnNotSet
 	}
 
@@ -64,4 +64,8 @@ func (t *Table) AddRow(inputs ...any) error {
 	t.addRow(&row)
 
 	return nil
+}
+
+func (t *Table) IsEmpty() bool {
+	return t.Schema.IsEmpty() || t.Rows.Rows == nil || len(t.Rows.Rows) == 0
 }

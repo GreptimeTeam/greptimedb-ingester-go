@@ -18,8 +18,8 @@ import (
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
-	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
-	gutil "github.com/GreptimeTeam/greptimedb-ingester-go/util"
+	err "github.com/GreptimeTeam/greptimedb-ingester-go/error"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
 type reqHeader struct {
@@ -27,12 +27,12 @@ type reqHeader struct {
 }
 
 func (h *reqHeader) build(cfg *config.Config) (*greptimepb.RequestHeader, error) {
-	if gutil.IsEmptyString(h.database) {
+	if util.IsEmptyString(h.database) {
 		h.database = cfg.Database
 	}
 
-	if gutil.IsEmptyString(h.database) {
-		return nil, gerr.ErrEmptyDatabase
+	if util.IsEmptyString(h.database) {
+		return nil, err.ErrEmptyDatabaseName
 	}
 
 	header := &greptimepb.RequestHeader{
@@ -57,7 +57,7 @@ func (h RespHeader) IsRateLimited() bool {
 }
 
 func (h RespHeader) IsNil() bool {
-	return h.Code == 0 && gutil.IsEmptyString(h.Msg)
+	return h.Code == 0 && util.IsEmptyString(h.Msg)
 }
 
 type getRespHeader interface {
