@@ -12,33 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package insert
+package request
 
 import (
+	"testing"
+
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
-	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
-type reqHeader struct {
-	database string
-}
+func TestHeaderBuild(t *testing.T) {
+	h := &reqHeader{}
 
-func (h *reqHeader) build(cfg *config.Config) (*greptimepb.RequestHeader, error) {
-	if util.IsEmptyString(h.database) {
-		h.database = cfg.Database
-	}
+	gh, err := h.build(&config.Config{})
+	assert.ErrorIs(t, err, errs.ErrEmptyDatabaseName)
+	assert.Nil(t, gh)
 
-	if util.IsEmptyString(h.database) {
-		return nil, errs.ErrEmptyDatabaseName
-	}
+	gh, err = h.build(&config.Config{Database: "database"})
+	assert.Nil(t, err)
+	assert.Equal(t, &greptimepb.RequestHeader{
+		Dbname: "database",
+	}, gh)
 
-	header := &greptimepb.RequestHeader{
-		Dbname:        h.database,
-		Authorization: cfg.BuildAuthHeader(),
-	}
-
-	return header, nil
+	h.database = "db_in_header"
+	gh, err = h.build(&config.Config{Database: "database"})
+	assert.Nil(t, err)
+	assert.Equal(t, &greptimepb.RequestHeader{
+		Dbname: "db_in_header",
+	}, gh)
 }

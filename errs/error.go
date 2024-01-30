@@ -19,12 +19,9 @@ import (
 )
 
 var (
-	ErrEmptyName            = errors.New("name should not be be empty")
-	ErrEmptyDatabaseName    = errors.New("name of database should not be empty")
-	ErrEmptyTableName       = errors.New("name of table should not be be empty")
-	ErrEmptyTables          = errors.New("please add at least one record before sending insert request")
-	ErrEmptyTimestamp       = errors.New("timestamp should not be empty")
-	ErrInvalidTimePrecision = errors.New("precision of timestamp is not valid")
-
-	ErrColumnNotSet = errors.New("column not set, please call AddColumn first")
+	ErrEmptyName         = errors.New("name should not be empty")
+	ErrEmptyDatabaseName = errors.New("name of database should not be empty")
+	ErrEmptyTableName    = errors.New("name of table should not be empty")
+	ErrEmptyTable        = errors.New("please add at least one row")
+	ErrEmptyColumn       = errors.New("column not set, please call AddColumn first")
 )

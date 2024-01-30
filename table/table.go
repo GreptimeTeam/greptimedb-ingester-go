@@ -20,46 +20,100 @@ import (
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
-	"github.com/GreptimeTeam/greptimedb-ingester-go/table/schema"
-	"github.com/GreptimeTeam/greptimedb-ingester-go/table/schema/cell"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table/cell"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
+// Table is a struct that holds the table name, columns, and rows.
+// Call New() to create a new table.
+// then Call AddTagColumn(), AddFieldColumn() or AddTimestampColumn() to add columns.
+// then Call AddRow() to add rows.
+//
+// NOTE: column counts MUST match the number of inputs in AddRow()
 type Table struct {
-	Schema schema.Schema
-	Rows   *gpb.Rows
+	name string
+
+	columnsSchema []*gpb.ColumnSchema
+	rows          *gpb.Rows
+
+	// sanitate_needed indicates if sanitate table and column name to snake and lower case
+	// Default is true.
+	sanitate_needed bool
 }
 
-func New(schema schema.Schema) *Table {
-	colSchema := make([]*gpb.ColumnSchema, len(schema.Columns))
-	for _, col := range schema.Columns {
-		colSchema = append(colSchema, col.ToColumnSchema())
-	}
-
-	return &Table{
-		Schema: schema,
-		Rows: &gpb.Rows{
-			Schema: colSchema,
-			Rows:   make([]*gpb.Row, 0),
-		},
-	}
+func New(name string) (*Table, error) {
+	return &Table{name: name, sanitate_needed: true}, nil
 }
 
-func (t *Table) addRow(row *gpb.Row) {
-	if t.Rows.Rows == nil {
-		t.Rows.Rows = make([]*gpb.Row, 0)
+func (t *Table) addColumn(name string, semanticType gpb.SemanticType, dataType gpb.ColumnDataType) error {
+	name, err := t.sanitate_if_needed(name)
+	if err != nil {
+		return err
 	}
 
-	t.Rows.Rows = append(t.Rows.Rows, row)
+	if t.columnsSchema == nil {
+		t.columnsSchema = make([]*gpb.ColumnSchema, 0)
+	}
+
+	column := &gpb.ColumnSchema{
+		ColumnName:   name,
+		SemanticType: semanticType,
+		Datatype:     dataType,
+	}
+	t.columnsSchema = append(t.columnsSchema, column)
+
+	return nil
+}
+
+func (t *Table) AddTagColumn(name string, type_ types.ColumnType) error {
+	typ, err := types.GetColumnType(type_)
+	if err != nil {
+		return err
+	}
+
+	return t.addColumn(name, gpb.SemanticType_TAG, typ)
+}
+
+func (t *Table) AddFieldColumn(name string, type_ types.ColumnType) error {
+	typ, err := types.GetColumnType(type_)
+	if err != nil {
+		return err
+	}
+
+	return t.addColumn(name, gpb.SemanticType_FIELD, typ)
+}
+
+// AddTimestampColumn helps to add the time index column
+func (t *Table) AddTimestampColumn(name string, type_ types.ColumnType) error {
+	typ, err := types.GetColumnType(type_)
+	if err != nil {
+		return err
+	}
+
+	return t.addColumn(name, gpb.SemanticType_TIMESTAMP, typ)
+}
+
+func (t *Table) addRow(row *gpb.Row) error {
+	if t.rows == nil {
+		t.rows = &gpb.Rows{}
+	}
+
+	if t.rows.Rows == nil {
+		t.rows.Rows = make([]*gpb.Row, 0)
+	}
+
+	t.rows.Rows = append(t.rows.Rows, row)
+	return nil
 }
 
 // AddRow will check if the input matches the schema
 func (t *Table) AddRow(inputs ...any) error {
-	if t.Schema.IsEmpty() {
-		return errs.ErrColumnNotSet
+	if t.IsColumnEmpty() {
+		return errs.ErrEmptyColumn
 	}
 
-	if len(inputs) != t.Schema.GetColumnCount() {
-		return fmt.Errorf("number of inputs %d does not match number of columns in schema %d", len(inputs), t.Schema.GetColumnCount())
+	if len(inputs) != len(t.columnsSchema) {
+		return fmt.Errorf("number of inputs %d does not match number of columns in schema %d", len(inputs), len(t.columnsSchema))
 	}
 
 	row := gpb.Row{
@@ -67,19 +121,66 @@ func (t *Table) AddRow(inputs ...any) error {
 	}
 
 	for i, input := range inputs {
-		dataType := t.Schema.GetColumn(i).DataType
+		fmt.Printf("input: %#v\n", input)
+		dataType := t.columnsSchema[i].Datatype
 		val, err := cell.New(input, dataType).Build()
 		if err != nil {
 			return err
 		}
-		row.Values = append(row.Values, val)
+		row.Values[i] = val
 	}
 
-	t.addRow(&row)
+	fmt.Printf("\nappend row values: %#v\n\n", row.GetValues())
 
-	return nil
+	return t.addRow(&row)
+}
+
+func (t *Table) IsColumnEmpty() bool {
+	return t.columnsSchema == nil || len(t.columnsSchema) == 0
+}
+
+func (t *Table) IsRowEmpty() bool {
+	return t.rows == nil || t.rows.Rows == nil || len(t.rows.Rows) == 0
 }
 
 func (t *Table) IsEmpty() bool {
-	return t.Schema.IsEmpty() || t.Rows.Rows == nil || len(t.Rows.Rows) == 0
+	return t.IsColumnEmpty() && t.IsRowEmpty()
+}
+
+// WithSanitate to change the sanitate behavior. Default is true.
+// sanitate table and column name to snake and lower case.
+func (t *Table) WithSanitate(sanitate_needed bool) *Table {
+	t.sanitate_needed = sanitate_needed
+	return t
+}
+
+// WithSanitate to change the sanitate_if_needed behavior. Default is true.
+// sanitate_if_needed table and column name to snake and lower case.
+func (t *Table) sanitate_if_needed(name string) (string, error) {
+	if t.sanitate_needed {
+		return sanitate(name)
+	}
+	return name, nil
+}
+
+func (t *Table) ToRequest() (*gpb.RowInsertRequest, error) {
+	name, err := t.sanitate_if_needed(t.name)
+	if err != nil {
+		return nil, err
+	}
+
+	if t.IsEmpty() {
+		return nil, errs.ErrEmptyTable
+	}
+
+	rows := t.rows
+	if rows.Schema == nil {
+		rows.Schema = t.columnsSchema
+	}
+
+	req := &gpb.RowInsertRequest{
+		TableName: name,
+		Rows:      rows,
+	}
+	return req, nil
 }

@@ -55,7 +55,7 @@ func New(host string) *Config {
 		Port: 4001,
 
 		DialOptions: []grpc.DialOption{
-			grpc.WithUserAgent("greptimedb-client-go"),
+			grpc.WithUserAgent("greptimedb-ingester-go"),
 		},
 
 		CallOptions: []grpc.CallOption{},
