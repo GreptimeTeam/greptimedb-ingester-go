@@ -15,54 +15,9 @@
 package util
 
 import (
-	"fmt"
 	"strings"
-	"time"
-
-	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
-	"github.com/stoewer/go-strcase"
-
-	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
 )
-
-func IsValidPrecision(t time.Duration) bool {
-	return t == time.Second ||
-		t == time.Millisecond ||
-		t == time.Microsecond ||
-		t == time.Nanosecond
-}
-
-func PrecisionToDataType(d time.Duration) (greptimepb.ColumnDataType, error) {
-	// if the precision has not been set, use default precision `time.Millisecond`
-	if d == 0 {
-		d = time.Millisecond
-	}
-	switch d {
-	case time.Second:
-		return greptimepb.ColumnDataType_TIMESTAMP_SECOND, nil
-	case time.Millisecond:
-		return greptimepb.ColumnDataType_TIMESTAMP_MILLISECOND, nil
-	case time.Microsecond:
-		return greptimepb.ColumnDataType_TIMESTAMP_MICROSECOND, nil
-	case time.Nanosecond:
-		return greptimepb.ColumnDataType_TIMESTAMP_NANOSECOND, nil
-	default:
-		return 0, gerr.ErrInvalidTimePrecision
-	}
-}
 
 func IsEmptyString(s string) bool {
 	return len(strings.TrimSpace(s)) == 0
-}
-
-func ToColumnName(s string) (string, error) {
-	if IsEmptyString(s) {
-		return "", gerr.ErrEmptyColumnName
-	}
-
-	if len(s) >= 100 {
-		return "", fmt.Errorf("the length of column name CAN NOT be longer than 100. %q", s)
-	}
-
-	return strings.ToLower(strcase.SnakeCase(s)), nil
 }

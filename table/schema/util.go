@@ -12,18 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package row
+package schema
 
-import "github.com/GreptimeTeam/greptimedb-ingester-go/table/schema/cell"
+import (
+	"fmt"
+	"strings"
 
-type Row struct {
-	Values []cell.Cell
-}
+	"github.com/stoewer/go-strcase"
 
-func New(columnCount uint) Row {
-	return Row{Values: make([]cell.Cell, columnCount)}
-}
+	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
+)
 
-func (r *Row) AddCell(cells ...cell.Cell) {
-	// TODO
+func SanitateName(s string) (string, error) {
+	if util.IsEmptyString(s) {
+		return "", errs.ErrEmptyName
+	}
+
+	if len(s) >= 100 {
+		return "", fmt.Errorf("the length of name CAN NOT be longer than 100. %q", s)
+	}
+
+	return strings.ToLower(strcase.SnakeCase(s)), nil
 }

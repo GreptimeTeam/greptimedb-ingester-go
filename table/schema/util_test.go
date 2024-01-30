@@ -12,35 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package insert
+package schema
 
 import (
+	"strings"
 	"testing"
 
-	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
-	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
 )
 
-func TestHeaderBuild(t *testing.T) {
-	h := &reqHeader{}
-
-	gh, err := h.build(&config.Config{})
-	assert.ErrorIs(t, err, errs.ErrEmptyDatabaseName)
-	assert.Nil(t, gh)
-
-	gh, err = h.build(&config.Config{Database: "database"})
+func TestSanitateName(t *testing.T) {
+	key, err := SanitateName("ts ")
 	assert.Nil(t, err)
-	assert.Equal(t, &greptimepb.RequestHeader{
-		Dbname: "database",
-	}, gh)
+	assert.Equal(t, "ts", key)
 
-	h.database = "db_in_header"
-	gh, err = h.build(&config.Config{Database: "database"})
+	key, err = SanitateName(" Ts")
 	assert.Nil(t, err)
-	assert.Equal(t, &greptimepb.RequestHeader{
-		Dbname: "db_in_header",
-	}, gh)
+	assert.Equal(t, "ts", key)
+
+	key, err = SanitateName(" TS ")
+	assert.Nil(t, err)
+	assert.Equal(t, "ts", key)
+
+	key, err = SanitateName("DiskUsage ")
+	assert.Nil(t, err)
+	assert.Equal(t, "disk_usage", key)
+
+	key, err = SanitateName("Disk-Usage")
+	assert.Nil(t, err)
+	assert.Equal(t, "disk_usage", key)
+
+	key, err = SanitateName("   ")
+	assert.NotNil(t, err)
+	assert.Equal(t, "", key)
+
+	key, err = SanitateName(strings.Repeat("timestamp", 20))
+	assert.NotNil(t, err)
+	assert.Equal(t, "", key)
 }

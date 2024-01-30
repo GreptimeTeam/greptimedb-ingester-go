@@ -18,7 +18,7 @@ import (
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
-	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
@@ -60,7 +60,7 @@ func (r *RowInsertsRequest) Build(cfg *config.Config) (*gpb.GreptimeRequest, err
 	}
 
 	if r.IsTablesEmpty() {
-		return nil, gerr.ErrEmptyTables
+		return nil, errs.ErrEmptyTables
 	}
 
 	reqs := make([]*gpb.RowInsertRequest, 0, len(r.tables))

@@ -18,7 +18,7 @@ import (
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
-	err "github.com/GreptimeTeam/greptimedb-ingester-go/error"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
@@ -32,7 +32,7 @@ func (h *reqHeader) build(cfg *config.Config) (*greptimepb.RequestHeader, error)
 	}
 
 	if util.IsEmptyString(h.database) {
-		return nil, err.ErrEmptyDatabaseName
+		return nil, errs.ErrEmptyDatabaseName
 	}
 
 	header := &greptimepb.RequestHeader{

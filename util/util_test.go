@@ -15,12 +15,9 @@
 package util
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
 )
 
 func TestEmptyString(t *testing.T) {
@@ -28,39 +25,4 @@ func TestEmptyString(t *testing.T) {
 	assert.True(t, IsEmptyString(" "))
 	assert.True(t, IsEmptyString("  "))
 	assert.True(t, IsEmptyString("\t"))
-}
-
-func TestColumnName(t *testing.T) {
-	key, err := ToColumnName("ts ")
-	assert.Nil(t, err)
-	assert.Equal(t, "ts", key)
-
-	key, err = ToColumnName(" Ts")
-	assert.Nil(t, err)
-	assert.Equal(t, "ts", key)
-
-	key, err = ToColumnName(" TS ")
-	assert.Nil(t, err)
-	assert.Equal(t, "ts", key)
-
-	key, err = ToColumnName("DiskUsage ")
-	assert.Nil(t, err)
-	assert.Equal(t, "disk_usage", key)
-
-	key, err = ToColumnName("Disk-Usage")
-	assert.Nil(t, err)
-	assert.Equal(t, "disk_usage", key)
-
-	key, err = ToColumnName("   ")
-	assert.NotNil(t, err)
-	assert.Equal(t, "", key)
-
-	key, err = ToColumnName(strings.Repeat("timestamp", 20))
-	assert.NotNil(t, err)
-	assert.Equal(t, "", key)
-}
-
-func TestPrecisionToDataType(t *testing.T) {
-	_, err := PrecisionToDataType(123)
-	assert.Equal(t, gerr.ErrInvalidTimePrecision, err)
 }
