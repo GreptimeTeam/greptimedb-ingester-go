@@ -12,12 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package errs
 
 import (
-	"strings"
+	"errors"
 )
 
-func IsEmptyString(s string) bool {
-	return len(strings.TrimSpace(s)) == 0
-}
+var (
+	ErrEmptyName            = errors.New("name should not be be empty")
+	ErrEmptyDatabaseName    = errors.New("name of database should not be empty")
+	ErrEmptyTableName       = errors.New("name of table should not be be empty")
+	ErrEmptyTables          = errors.New("please add at least one record before sending insert request")
+	ErrEmptyTimestamp       = errors.New("timestamp should not be empty")
+	ErrInvalidTimePrecision = errors.New("precision of timestamp is not valid")
+
+	ErrColumnNotSet = errors.New("column not set, please call AddColumn first")
+)

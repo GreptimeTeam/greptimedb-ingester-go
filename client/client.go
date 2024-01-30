@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package client
 
 import (
 	"context"
@@ -22,44 +22,32 @@ import (
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/insert"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
-// StreamClient is only for inserting
-type StreamClient struct {
-	client greptimepb.GreptimeDatabase_HandleRequestsClient
-	cfg    *config.Config
+// Client helps to write data into GreptimeDB. A Client is safe for concurrent
+// use by multiple goroutines,you can have one Client instance in your application.
+type Client struct {
+	cfg *config.Config
+
+	client greptimepb.GreptimeDatabaseClient
 }
 
-// NewStreamClient helps to create a stream insert client.
-// If Client has performance issue, you can try the stream client.
-func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
+// New helps to create the greptimedb client, which will be responsible write data into GreptimeDB.
+func New(cfg *config.Config) (*Client, error) {
 	conn, err := grpc.Dial(cfg.GetGRPCAddr(), cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := greptimepb.NewGreptimeDatabaseClient(conn).HandleRequests(context.Background(), cfg.CallOptions...)
+	client := greptimepb.NewGreptimeDatabaseClient(conn)
+	return &Client{cfg: cfg, client: client}, nil
+}
+
+func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*greptimepb.GreptimeResponse, error) {
+	req, err := insert.NewRowInsertsRequest(tables...).Build(c.cfg)
 	if err != nil {
 		return nil, err
 	}
-
-	return &StreamClient{client: client, cfg: cfg}, nil
-}
-
-func (c *StreamClient) Send(ctx context.Context, req insert.InsertsRequest) error {
-	request, err := req.Build(c.cfg)
-	if err != nil {
-		return err
-	}
-
-	return c.client.Send(request)
-}
-
-func (c *StreamClient) CloseAndRecv(ctx context.Context) (*greptimepb.AffectedRows, error) {
-	resp, err := c.client.CloseAndRecv()
-	if err != nil {
-		return nil, err
-	}
-
-	return resp.GetAffectedRows(), nil
+	return c.client.Handle(ctx, req, c.cfg.CallOptions...)
 }

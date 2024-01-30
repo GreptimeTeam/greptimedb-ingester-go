@@ -1,7 +1,5 @@
-github.com/GreptimeTeam/greptime-proto v0.4.0 h1:2bUcWwz3qJ7g5z+CgLCLll0hvktlHcZGZcNrrGlv8pc=
-github.com/GreptimeTeam/greptime-proto v0.4.0/go.mod h1:jk5XBR9qIbSBiDF2Gix1KALyIMCVktcpx91AayOWxmE=
-github.com/bits-and-blooms/bitset v1.7.0 h1:YjAGVd3XmtK9ktAbX8Zg2g2PwLIMjGREZJHlV4j7NEo=
-github.com/bits-and-blooms/bitset v1.7.0/go.mod h1:gIdJ4wp64HaoK2YrL1Q5/N7Y16edYb8uY+O0FJTyyDA=
+github.com/GreptimeTeam/greptime-proto v0.4.2 h1:oX6N1v6+bYQDrh/QM+JmMHqEWjlxAVogCII15JGqbpQ=
+github.com/GreptimeTeam/greptime-proto v0.4.2/go.mod h1:jk5XBR9qIbSBiDF2Gix1KALyIMCVktcpx91AayOWxmE=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-// http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,23 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package row
 
-import (
-	"testing"
+import "github.com/GreptimeTeam/greptimedb-ingester-go/table/schema/cell"
 
-	"github.com/stretchr/testify/assert"
-)
+type Row struct {
+	Values []cell.Cell
+}
 
-// 00000100 00000001
-// 4        1
-//
-// []byte{1, 4} // LittleEndian
-func TestMask(t *testing.T) {
-	mask := Mask{}
-	mask.Set(0).Set(10)
+func New(columnCount uint) Row {
+	return Row{Values: make([]cell.Cell, columnCount)}
+}
 
-	b, err := mask.Shrink(2)
-	assert.Nil(t, err)
-	assert.Equal(t, []byte{1, 4}, b)
+func (r *Row) AddCell(cells ...cell.Cell) {
+	// TODO
 }

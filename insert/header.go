@@ -18,8 +18,8 @@ import (
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
-	gerr "github.com/GreptimeTeam/greptimedb-ingester-go/error"
-	gutil "github.com/GreptimeTeam/greptimedb-ingester-go/util"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
 type reqHeader struct {
@@ -27,12 +27,12 @@ type reqHeader struct {
 }
 
 func (h *reqHeader) build(cfg *config.Config) (*greptimepb.RequestHeader, error) {
-	if gutil.IsEmptyString(h.database) {
+	if util.IsEmptyString(h.database) {
 		h.database = cfg.Database
 	}
 
-	if gutil.IsEmptyString(h.database) {
-		return nil, gerr.ErrEmptyDatabase
+	if util.IsEmptyString(h.database) {
+		return nil, errs.ErrEmptyDatabaseName
 	}
 
 	header := &greptimepb.RequestHeader{
@@ -41,34 +41,4 @@ func (h *reqHeader) build(cfg *config.Config) (*greptimepb.RequestHeader, error)
 	}
 
 	return header, nil
-}
-
-type RespHeader struct {
-	Code uint32
-	Msg  string
-}
-
-func (h RespHeader) IsSuccess() bool {
-	return h.Code == 0
-}
-
-func (h RespHeader) IsRateLimited() bool {
-	return h.Code == 6001
-}
-
-func (h RespHeader) IsNil() bool {
-	return h.Code == 0 && gutil.IsEmptyString(h.Msg)
-}
-
-type getRespHeader interface {
-	GetHeader() *greptimepb.ResponseHeader
-}
-
-func ParseRespHeader[T getRespHeader](r T) RespHeader {
-	header := &RespHeader{}
-	if r.GetHeader() != nil && r.GetHeader().Status != nil {
-		header.Code = r.GetHeader().Status.StatusCode
-		header.Msg = r.GetHeader().Status.ErrMsg
-	}
-	return *header
 }
