@@ -25,36 +25,29 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
-// Client helps to Insert/Query data Into/From GreptimeDB. A Client is safe for concurrent
+// Client helps to write data into GreptimeDB. A Client is safe for concurrent
 // use by multiple goroutines,you can have one Client instance in your application.
 type Client struct {
 	cfg *config.Config
 
-	// For `insert`, unary calls are supported
-	greptimeClient greptimepb.GreptimeDatabaseClient
+	client greptimepb.GreptimeDatabaseClient
 }
 
-// NewClient helps to create the greptimedb client, which will be responsible Write/Read data To/From GreptimeDB
+// New helps to create the greptimedb client, which will be responsible write data into GreptimeDB.
 func New(cfg *config.Config) (*Client, error) {
 	conn, err := grpc.Dial(cfg.GetGRPCAddr(), cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
 
-	greptimeClient := greptimepb.NewGreptimeDatabaseClient(conn)
-
-	return &Client{
-		cfg:            cfg,
-		greptimeClient: greptimeClient,
-	}, nil
+	client := greptimepb.NewGreptimeDatabaseClient(conn)
+	return &Client{cfg: cfg, client: client}, nil
 }
 
 func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*greptimepb.GreptimeResponse, error) {
-	req := insert.RowInsertsRequest{}
-	req.AddTable(tables...)
-	request, err := req.Build(c.cfg)
+	req, err := insert.NewRowInsertsRequest(tables...).Build(c.cfg)
 	if err != nil {
 		return nil, err
 	}
-	return c.greptimeClient.Handle(ctx, request, c.cfg.CallOptions...)
+	return c.client.Handle(ctx, req, c.cfg.CallOptions...)
 }

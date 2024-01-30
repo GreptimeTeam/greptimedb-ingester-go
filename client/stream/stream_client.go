@@ -22,17 +22,18 @@ import (
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/insert"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
 // StreamClient is only for inserting
-type StreamClient struct {
-	client greptimepb.GreptimeDatabase_HandleRequestsClient
+type Client struct {
 	cfg    *config.Config
+	client greptimepb.GreptimeDatabase_HandleRequestsClient
 }
 
 // NewStreamClient helps to create a stream insert client.
 // If Client has performance issue, you can try the stream client.
-func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
+func New(cfg *config.Config) (*Client, error) {
 	conn, err := grpc.Dial(cfg.GetGRPCAddr(), cfg.DialOptions...)
 	if err != nil {
 		return nil, err
@@ -43,19 +44,18 @@ func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
 		return nil, err
 	}
 
-	return &StreamClient{client: client, cfg: cfg}, nil
+	return &Client{client: client, cfg: cfg}, nil
 }
 
-func (c *StreamClient) Send(ctx context.Context, req insert.InsertsRequest) error {
-	request, err := req.Build(c.cfg)
+func (c *Client) Send(ctx context.Context, tables ...*table.Table) error {
+	req, err := insert.NewRowInsertsRequest(tables...).Build(c.cfg)
 	if err != nil {
 		return err
 	}
-
-	return c.client.Send(request)
+	return c.client.Send(req)
 }
 
-func (c *StreamClient) CloseAndRecv(ctx context.Context) (*greptimepb.AffectedRows, error) {
+func (c *Client) CloseAndRecv(ctx context.Context) (*greptimepb.AffectedRows, error) {
 	resp, err := c.client.CloseAndRecv()
 	if err != nil {
 		return nil, err

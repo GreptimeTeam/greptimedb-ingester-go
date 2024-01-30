@@ -27,6 +27,12 @@ type RowInsertsRequest struct {
 	tables []*table.Table
 }
 
+func NewRowInsertsRequest(tables ...*table.Table) *RowInsertsRequest {
+	return &RowInsertsRequest{
+		tables: tables,
+	}
+}
+
 func (r *RowInsertsRequest) IsTablesEmpty() bool {
 	return r.tables == nil || len(r.tables) == 0
 }
@@ -47,7 +53,7 @@ func (r *RowInsertsRequest) AddTable(tables ...*table.Table) *RowInsertsRequest 
 	return r
 }
 
-func (r RowInsertsRequest) Build(cfg *config.Config) (*gpb.GreptimeRequest, error) {
+func (r *RowInsertsRequest) Build(cfg *config.Config) (*gpb.GreptimeRequest, error) {
 	header, err := r.header.build(cfg)
 	if err != nil {
 		return nil, err

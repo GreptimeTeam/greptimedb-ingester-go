@@ -42,33 +42,3 @@ func (h *reqHeader) build(cfg *config.Config) (*greptimepb.RequestHeader, error)
 
 	return header, nil
 }
-
-type RespHeader struct {
-	Code uint32
-	Msg  string
-}
-
-func (h RespHeader) IsSuccess() bool {
-	return h.Code == 0
-}
-
-func (h RespHeader) IsRateLimited() bool {
-	return h.Code == 6001
-}
-
-func (h RespHeader) IsNil() bool {
-	return h.Code == 0 && util.IsEmptyString(h.Msg)
-}
-
-type getRespHeader interface {
-	GetHeader() *greptimepb.ResponseHeader
-}
-
-func ParseRespHeader[T getRespHeader](r T) RespHeader {
-	header := &RespHeader{}
-	if r.GetHeader() != nil && r.GetHeader().Status != nil {
-		header.Code = r.GetHeader().Status.StatusCode
-		header.Msg = r.GetHeader().Status.ErrMsg
-	}
-	return *header
-}

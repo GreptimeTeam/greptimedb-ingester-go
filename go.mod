@@ -3,8 +3,7 @@ module github.com/GreptimeTeam/greptimedb-ingester-go
 go 1.20
 
 require (
-	github.com/GreptimeTeam/greptime-proto v0.4.0
-	github.com/bits-and-blooms/bitset v1.7.0
+	github.com/GreptimeTeam/greptime-proto v0.4.2
 	github.com/stoewer/go-strcase v1.3.0
 	github.com/stretchr/testify v1.8.1
 	google.golang.org/grpc v1.56.3
