@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schema
+package table
 
 import (
 	"strings"
@@ -22,31 +22,31 @@ import (
 )
 
 func TestSanitateName(t *testing.T) {
-	key, err := SanitateName("ts ")
+	key, err := sanitate("ts ")
 	assert.Nil(t, err)
 	assert.Equal(t, "ts", key)
 
-	key, err = SanitateName(" Ts")
+	key, err = sanitate(" Ts")
 	assert.Nil(t, err)
 	assert.Equal(t, "ts", key)
 
-	key, err = SanitateName(" TS ")
+	key, err = sanitate(" TS ")
 	assert.Nil(t, err)
 	assert.Equal(t, "ts", key)
 
-	key, err = SanitateName("DiskUsage ")
+	key, err = sanitate("DiskUsage ")
 	assert.Nil(t, err)
 	assert.Equal(t, "disk_usage", key)
 
-	key, err = SanitateName("Disk-Usage")
+	key, err = sanitate("Disk-Usage")
 	assert.Nil(t, err)
 	assert.Equal(t, "disk_usage", key)
 
-	key, err = SanitateName("   ")
+	key, err = sanitate("   ")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", key)
 
-	key, err = SanitateName(strings.Repeat("timestamp", 20))
+	key, err = sanitate(strings.Repeat("timestamp", 20))
 	assert.NotNil(t, err)
 	assert.Equal(t, "", key)
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package insert
+package request
 
 import (
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
@@ -22,29 +22,29 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
-type RowInsertsRequest struct {
+type Request struct {
 	header reqHeader
 	tables []*table.Table
 }
 
-func NewRowInsertsRequest(tables ...*table.Table) *RowInsertsRequest {
-	return &RowInsertsRequest{
+func New(tables ...*table.Table) *Request {
+	return &Request{
 		tables: tables,
 	}
 }
 
-func (r *RowInsertsRequest) IsTablesEmpty() bool {
+func (r *Request) IsTablesEmpty() bool {
 	return r.tables == nil || len(r.tables) == 0
 }
 
-func (r *RowInsertsRequest) WithDatabase(database string) *RowInsertsRequest {
+func (r *Request) WithDatabase(database string) *Request {
 	r.header = reqHeader{
 		database: database,
 	}
 	return r
 }
 
-func (r *RowInsertsRequest) AddTable(tables ...*table.Table) *RowInsertsRequest {
+func (r *Request) WithTables(tables ...*table.Table) *Request {
 	if r.tables == nil {
 		r.tables = make([]*table.Table, 0)
 	}
@@ -53,32 +53,28 @@ func (r *RowInsertsRequest) AddTable(tables ...*table.Table) *RowInsertsRequest 
 	return r
 }
 
-func (r *RowInsertsRequest) Build(cfg *config.Config) (*gpb.GreptimeRequest, error) {
+func (r *Request) Build(cfg *config.Config) (*gpb.GreptimeRequest, error) {
+	if r.IsTablesEmpty() {
+		return nil, errs.ErrEmptyTable
+	}
+
 	header, err := r.header.build(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	if r.IsTablesEmpty() {
-		return nil, errs.ErrEmptyTables
-	}
-
 	reqs := make([]*gpb.RowInsertRequest, 0, len(r.tables))
-	for _, tbl := range r.tables {
-		req := &gpb.RowInsertRequest{
-			TableName: tbl.Schema.Name,
-			Rows:      tbl.Rows,
+	for _, table := range r.tables {
+		req, err := table.ToRequest()
+		if err != nil {
+			return nil, err
 		}
 		reqs = append(reqs, req)
 	}
 
-	req := gpb.GreptimeRequest_RowInserts{
+	req := &gpb.GreptimeRequest_RowInserts{
 		RowInserts: &gpb.RowInsertRequests{Inserts: reqs},
 	}
-
-	return &gpb.GreptimeRequest{
-		Header:  header,
-		Request: &req,
-	}, nil
+	return &gpb.GreptimeRequest{Header: header, Request: req}, nil
 
 }

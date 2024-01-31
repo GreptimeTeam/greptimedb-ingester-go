@@ -21,7 +21,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
-	"github.com/GreptimeTeam/greptimedb-ingester-go/insert"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
@@ -45,7 +45,7 @@ func New(cfg *config.Config) (*Client, error) {
 }
 
 func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*greptimepb.GreptimeResponse, error) {
-	req, err := insert.NewRowInsertsRequest(tables...).Build(c.cfg)
+	req, err := request.New(tables...).Build(c.cfg)
 	if err != nil {
 		return nil, err
 	}
