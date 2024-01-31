@@ -75,7 +75,6 @@ func (r *Request) Build(cfg *config.Config) (*gpb.GreptimeRequest, error) {
 	req := &gpb.GreptimeRequest_RowInserts{
 		RowInserts: &gpb.RowInsertRequests{Inserts: reqs},
 	}
-
 	return &gpb.GreptimeRequest{Header: header, Request: req}, nil
 
 }

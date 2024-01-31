@@ -34,11 +34,11 @@ import (
 //   - DialOptions and CallOptions are for gRPC service.
 //     You can specify them or leave them empty.
 type Config struct {
-	Host     string // example: 127.0.0.1
+	Host     string // no scheme or port included. example: 127.0.0.1
 	Port     int    // default: 4001
 	Username string
 	Password string
-	Database string // the default database for client
+	Database string // the default database
 
 	// DialOptions are passed to grpc.DialContext
 	// when a new gRPC connection is to be created.

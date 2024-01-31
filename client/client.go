@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"google.golang.org/grpc"
@@ -47,35 +46,6 @@ func New(cfg *config.Config) (*Client, error) {
 
 func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*greptimepb.GreptimeResponse, error) {
 	req, err := request.New(tables...).Build(c.cfg)
-	fmt.Printf("dbname: %#v\n", req.Header.GetDbname())
-
-	inserts := req.GetRowInserts().GetInserts()
-
-	for _, insert := range inserts {
-		fmt.Printf("table name: %q\n", insert.GetTableName())
-
-		fmt.Println("columns:")
-		for _, schema := range insert.Rows.GetSchema() {
-			fmt.Printf("name: %#v\n", schema.GetColumnName())
-			fmt.Printf("semantic: %#v\n", schema.GetSemanticType())
-			fmt.Printf("type: %#v\n", schema.GetDatatype())
-		}
-
-		fmt.Println()
-		fmt.Println()
-		fmt.Println("rows:")
-
-		for _, row := range insert.GetRows().GetRows() {
-			for _, val := range row.GetValues() {
-				fmt.Printf("value: %#v\n", val.String())
-			}
-			fmt.Println()
-			fmt.Println()
-		}
-
-		fmt.Println()
-
-	}
 	if err != nil {
 		return nil, err
 	}

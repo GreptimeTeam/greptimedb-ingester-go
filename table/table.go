@@ -121,7 +121,6 @@ func (t *Table) AddRow(inputs ...any) error {
 	}
 
 	for i, input := range inputs {
-		fmt.Printf("input: %#v\n", input)
 		dataType := t.columnsSchema[i].Datatype
 		val, err := cell.New(input, dataType).Build()
 		if err != nil {
@@ -129,9 +128,6 @@ func (t *Table) AddRow(inputs ...any) error {
 		}
 		row.Values[i] = val
 	}
-
-	fmt.Printf("\nappend row values: %#v\n\n", row.GetValues())
-
 	return t.addRow(&row)
 }
 

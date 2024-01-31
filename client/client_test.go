@@ -18,10 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
-	"net/url"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -39,9 +36,14 @@ import (
 )
 
 var (
+	timezone                      = "UTC"
+	tableName                     = "test_insert_monitor"
 	database                      = "public"
 	host                          = "127.0.0.1"
 	httpPort, grpcPort, mysqlPort = 4000, 4001, 4002
+
+	cli *Client
+	db  *Mysql
 )
 
 type monitor struct {
@@ -55,12 +57,12 @@ type monitor struct {
 }
 
 func (monitor) TableName() string {
-	return "monitor"
+	return tableName
 }
 
-type mysql_ struct {
+type Mysql struct {
 	Host     string
-	Port     string
+	Port     int
 	User     string
 	Password string
 	Database string
@@ -68,13 +70,13 @@ type mysql_ struct {
 	DB *gorm.DB
 }
 
-func (m *mysql_) Setup() error {
+func (m *Mysql) Setup() error {
 	if m.DB != nil {
 		return nil
 	}
 
-	dsn := fmt.Sprintf("tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		m.Host, m.Port, m.Database)
+	dsn := fmt.Sprintf("tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=%s",
+		m.Host, m.Port, m.Database, timezone)
 	if m.User != "" && m.Password != "" {
 		dsn = fmt.Sprintf("%s:%s@%s", m.User, m.Password, dsn)
 	}
@@ -87,17 +89,46 @@ func (m *mysql_) Setup() error {
 	return nil
 }
 
-func (p *mysql_) AllMonitors() ([]monitor, error) {
+func (p *Mysql) AllMonitors() ([]monitor, error) {
 	var monitors []monitor
 	err := p.DB.Find(&monitors).Error
 	return monitors, err
 }
 
-func INIT() {
+func newClient() *Client {
+	options := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+	cfg := config.New(host).
+		WithPort(grpcPort).
+		WithDatabase(database).
+		WithDialOptions(options...)
+
+	client, err := New(cfg)
+	if err != nil {
+		log.Fatalf("failed to create client: %s", err.Error())
+	}
+	return client
+}
+
+func newMysql() *Mysql {
+	db := &Mysql{
+		Host:     host,
+		Port:     mysqlPort,
+		User:     "",
+		Password: "",
+		Database: database,
+	}
+	if err := db.Setup(); err != nil {
+		log.Fatalln("failed to setup mysql" + err.Error())
+	}
+	return db
+}
+
+func init() {
 	repo := "greptime/greptimedb"
 	tag := "v0.6.0"
 
-	var err error
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		log.Fatalln("Could not connect to docker: " + err.Error())
@@ -136,6 +167,7 @@ func INIT() {
 		time.Sleep(time.Second * 5)
 		httpPort, err = strconv.Atoi(resource.GetPort(("4000/tcp")))
 		grpcPort, err = strconv.Atoi(resource.GetPort(("4001/tcp")))
+		mysqlPort, err = strconv.Atoi(resource.GetPort(("4002/tcp")))
 		if err != nil {
 			return err
 		}
@@ -143,46 +175,21 @@ func INIT() {
 	}); err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}
-}
 
-func newClient(t *testing.T) *Client {
-	options := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
-	cfg := config.New(host).WithPort(grpcPort).WithDatabase(database).WithDialOptions(options...)
-	client, err := New(cfg)
-	assert.Nil(t, err)
-	return client
-}
+	log.Printf("Container started, http port: %d, grpc port: %d, mysql port: %d\n", httpPort, grpcPort, mysqlPort)
 
-func newMysql(t *testing.T) *mysql_ {
-	mysql := &mysql_{
-		Host:     "127.0.0.1",
-		Port:     "4002",
-		User:     "",
-		Password: "",
-		Database: "public",
-	}
-	if err := mysql.Setup(); err != nil {
-		log.Fatalln("failed to setup mysql" + err.Error())
-	}
-	return mysql
-}
-
-func createTable(t *testing.T, schema string) {
-	data := url.Values{}
-	data.Set("sql", schema)
-	body := strings.NewReader(data.Encode())
-	uri := fmt.Sprintf("http://localhost:%d/v1/sql?db=%s", httpPort, database)
-	resp, err := http.DefaultClient.Post(uri, "application/x-www-form-urlencoded", body)
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	defer resp.Body.Close()
+	cli = newClient()
+	db = newMysql()
 }
 
 func TestInsertMonitor(t *testing.T) {
-	tableName := "test_insert_monitor"
+	loc, err := time.LoadLocation(timezone)
+	assert.Nil(t, err)
+	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
+	time1 := time.UnixMilli(ts1).In(loc)
+	ts2 := time.Now().Add(-2 * time.Minute).UnixMilli()
+	time2 := time.UnixMilli(ts2).In(loc)
+
 	monitors := []monitor{
 		{
 			ID:          1,
@@ -190,7 +197,7 @@ func TestInsertMonitor(t *testing.T) {
 			Memory:      1,
 			Cpu:         1.0,
 			Temperature: -1,
-			Ts:          time.Now(),
+			Ts:          time1,
 			Running:     true,
 		},
 		{
@@ -199,7 +206,7 @@ func TestInsertMonitor(t *testing.T) {
 			Memory:      2,
 			Cpu:         2.0,
 			Temperature: -2,
-			Ts:          time.Now(),
+			Ts:          time2,
 			Running:     true,
 		},
 	}
@@ -222,9 +229,18 @@ func TestInsertMonitor(t *testing.T) {
 		assert.Nil(t, err)
 	}
 
-	client := newClient(t)
-	resp, err := client.Write(context.Background(), table)
-	fmt.Printf("--------- err: %#v\n", err)
+	resp, err := cli.Write(context.Background(), table)
 	assert.Nil(t, err)
-	fmt.Printf("--------- resp: %#v\n", resp)
+	assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
+	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
+	assert.Equal(t, uint32(len(monitors)), resp.GetAffectedRows().GetValue())
+
+	monitors_, err := db.AllMonitors()
+	assert.Nil(t, err)
+
+	assert.Equal(t, len(monitors), len(monitors_))
+
+	for i, monitor_ := range monitors_ {
+		assert.Equal(t, monitors[i], monitor_)
+	}
 }
