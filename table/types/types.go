@@ -26,37 +26,37 @@ type ColumnType int
 // THEY WILL KEEP EXACTLY THE SAME ORDER WITH PROTOCOL BUFFER
 // https://github.com/GreptimeTeam/greptime-proto/blob/main/proto/greptime/v1/common.proto#L78-L110
 const (
-	BOOLEAN                 ColumnType = 0
-	INT8                    ColumnType = 1
-	INT16                   ColumnType = 2
-	INT32                   ColumnType = 3
-	INT64                   ColumnType = 4
-	UINT8                   ColumnType = 5
-	UINT16                  ColumnType = 6
-	UINT32                  ColumnType = 7
-	UINT64                  ColumnType = 8
-	FLOAT32                 ColumnType = 9
-	FLOAT64                 ColumnType = 10
-	BINARY                  ColumnType = 11
-	STRING                  ColumnType = 12
-	DATE                    ColumnType = 13
-	DATETIME                ColumnType = 14
-	TIMESTAMP_SECOND        ColumnType = 15
-	TIMESTAMP_MILLISECOND   ColumnType = 16
-	TIMESTAMP_MICROSECOND   ColumnType = 17
-	TIMESTAMP_NANOSECOND    ColumnType = 18
-	TIME_SECOND             ColumnType = 19
-	TIME_MILLISECOND        ColumnType = 20
-	TIME_MICROSECOND        ColumnType = 21
-	TIME_NANOSECOND         ColumnType = 22
-	INTERVAL_YEAR_MONTH     ColumnType = 23
-	INTERVAL_DAY_TIME       ColumnType = 24
-	INTERVAL_MONTH_DAY_NANO ColumnType = 25
-	DURATION_SECOND         ColumnType = 26
-	DURATION_MILLISECOND    ColumnType = 27
-	DURATION_MICROSECOND    ColumnType = 28
-	DURATION_NANOSECOND     ColumnType = 29
-	DECIMAL128              ColumnType = 30
+	BOOLEAN               ColumnType = 0
+	INT8                  ColumnType = 1
+	INT16                 ColumnType = 2
+	INT32                 ColumnType = 3
+	INT64                 ColumnType = 4
+	UINT8                 ColumnType = 5
+	UINT16                ColumnType = 6
+	UINT32                ColumnType = 7
+	UINT64                ColumnType = 8
+	FLOAT32               ColumnType = 9
+	FLOAT64               ColumnType = 10
+	BINARY                ColumnType = 11
+	STRING                ColumnType = 12
+	DATE                  ColumnType = 13
+	DATETIME              ColumnType = 14
+	TIMESTAMP_SECOND      ColumnType = 15
+	TIMESTAMP_MILLISECOND ColumnType = 16
+	TIMESTAMP_MICROSECOND ColumnType = 17
+	TIMESTAMP_NANOSECOND  ColumnType = 18
+	// TIME_SECOND             ColumnType = 19
+	// TIME_MILLISECOND        ColumnType = 20
+	// TIME_MICROSECOND        ColumnType = 21
+	// TIME_NANOSECOND         ColumnType = 22
+	// INTERVAL_YEAR_MONTH     ColumnType = 23
+	// INTERVAL_DAY_TIME       ColumnType = 24
+	// INTERVAL_MONTH_DAY_NANO ColumnType = 25
+	// DURATION_SECOND         ColumnType = 26
+	// DURATION_MILLISECOND    ColumnType = 27
+	// DURATION_MICROSECOND    ColumnType = 28
+	// DURATION_NANOSECOND     ColumnType = 29
+	// DECIMAL128              ColumnType = 30
 )
 
 func GetColumnType(type_ ColumnType) (gpb.ColumnDataType, error) {
@@ -99,32 +99,8 @@ func GetColumnType(type_ ColumnType) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_TIMESTAMP_MICROSECOND, nil
 	case TIMESTAMP_NANOSECOND:
 		return gpb.ColumnDataType_TIMESTAMP_NANOSECOND, nil
-	case TIME_SECOND:
-		return gpb.ColumnDataType_TIME_SECOND, nil
-	case TIME_MILLISECOND:
-		return gpb.ColumnDataType_TIME_MILLISECOND, nil
-	case TIME_MICROSECOND:
-		return gpb.ColumnDataType_TIME_MICROSECOND, nil
-	case TIME_NANOSECOND:
-		return gpb.ColumnDataType_TIME_NANOSECOND, nil
-	case INTERVAL_YEAR_MONTH:
-		return gpb.ColumnDataType_INTERVAL_YEAR_MONTH, nil
-	case INTERVAL_DAY_TIME:
-		return gpb.ColumnDataType_INTERVAL_DAY_TIME, nil
-	case INTERVAL_MONTH_DAY_NANO:
-		return gpb.ColumnDataType_INTERVAL_MONTH_DAY_NANO, nil
-	case DURATION_SECOND:
-		return gpb.ColumnDataType_DURATION_SECOND, nil
-	case DURATION_MILLISECOND:
-		return gpb.ColumnDataType_DURATION_MILLISECOND, nil
-	case DURATION_MICROSECOND:
-		return gpb.ColumnDataType_DURATION_MICROSECOND, nil
-	case DURATION_NANOSECOND:
-		return gpb.ColumnDataType_DURATION_NANOSECOND, nil
-	case DECIMAL128:
-		return gpb.ColumnDataType_DECIMAL128, nil
 	default:
-		return 0, fmt.Errorf("unknown column type %d", type_)
+		return 0, fmt.Errorf("unsupported column type %d", type_)
 	}
 
 }

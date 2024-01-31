@@ -61,72 +61,73 @@ func BuildBytes(v any) (*gpb.Value, error) {
 }
 
 func getIntPointer(v any) (*int32, *int64, *uint32, *uint64, error) {
-	var int32Val *int32
-	var int64Val *int64
-	var uint32Val *uint32
-	var uint64Val *uint64
+	var int32Pointer *int32
+	var int64Pointer *int64
+	var uint32Pointer *uint32
+	var uint64Pointer *uint64
+
 	switch t := v.(type) {
 	case int64:
-		int64Val = &t
+		int64Pointer = &t
 	case int32:
-		int32Val = &t
+		int32Pointer = &t
 	case int16:
 		val := int32(t)
-		int32Val = &val
+		int32Pointer = &val
 	case int8:
 		val := int32(t)
-		int32Val = &val
+		int32Pointer = &val
 	case int:
 		val := int64(t)
-		int64Val = &val
+		int64Pointer = &val
 
 	case uint64:
-		uint64Val = &t
+		uint64Pointer = &t
 	case uint32:
-		uint32Val = &t
+		uint32Pointer = &t
 	case uint16:
 		val := uint32(t)
-		uint32Val = &val
+		uint32Pointer = &val
 	case uint8:
 		val := uint32(t)
-		uint32Val = &val
+		uint32Pointer = &val
 	case uint:
 		val := uint64(t)
-		uint64Val = &val
+		uint64Pointer = &val
 
 	case *int64:
-		int64Val = t
+		int64Pointer = t
 	case *int32:
-		int32Val = t
+		int32Pointer = t
 	case *int16:
 		val := int32(*t)
-		int32Val = &val
+		int32Pointer = &val
 	case *int8:
 		val := int32(*t)
-		int32Val = &val
+		int32Pointer = &val
 	case *int:
 		val := int64(*t)
-		int64Val = &val
+		int64Pointer = &val
 
 	case *uint64:
-		uint64Val = t
+		uint64Pointer = t
 	case *uint32:
-		uint32Val = t
+		uint32Pointer = t
 	case *uint16:
 		val := uint32(*t)
-		uint32Val = &val
+		uint32Pointer = &val
 	case *uint8:
 		val := uint32(*t)
-		uint32Val = &val
+		uint32Pointer = &val
 	case *uint:
 		val := uint64(*t)
-		uint64Val = &val
+		uint64Pointer = &val
 
 	default:
 		return nil, nil, nil, nil, fmt.Errorf(formatter+" Integer", t, v)
 	}
 
-	return int32Val, int64Val, uint32Val, uint64Val, nil
+	return int32Pointer, int64Pointer, uint32Pointer, uint64Pointer, nil
 }
 
 func getInt32Value(int32Pointer *int32, int64Pointer *int64, uint32Pointer *uint32, uint64Pointer *uint64) int32 {
