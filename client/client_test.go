@@ -18,7 +18,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,9 +37,15 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
+//TODO(yuanbohan):
+// unmatched length of columns in rows and columns in schema
+// support pointer
+// write pojo
+
 var (
-	tableName = ""
-	timezone  = "UTC"
+	monitorTableName   = "monitor"
+	datatypesTableName = "datatypes"
+	timezone           = "UTC"
 
 	database                      = "public"
 	host                          = "127.0.0.1"
@@ -81,7 +89,7 @@ type datatype struct {
 }
 
 func (datatype) TableName() string {
-	return tableName
+	return datatypesTableName
 }
 
 type monitor struct {
@@ -95,7 +103,7 @@ type monitor struct {
 }
 
 func (monitor) TableName() string {
-	return tableName
+	return monitorTableName
 }
 
 type Mysql struct {
@@ -153,6 +161,22 @@ func newClient() *Client {
 		log.Fatalf("failed to create client: %s", err.Error())
 	}
 	return client
+}
+
+func randomId() int64 {
+	s := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(s)
+	return r.Int63()
+}
+
+func getMonitorsIds(monitors []monitor) string {
+	ids := make([]string, 0)
+
+	for _, monitor := range monitors {
+		ids = append(ids, strconv.Itoa(int(monitor.ID)))
+	}
+
+	return fmt.Sprintf("(%s)", strings.Join(ids, ","))
 }
 
 func newMysql() *Mysql {
@@ -224,11 +248,10 @@ func init() {
 
 	cli = newClient()
 	db = newMysql()
+	streamClient = newStreamClient()
 }
 
 func TestInsertMonitors(t *testing.T) {
-	tableName = "test_insert_monitor"
-
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
@@ -238,7 +261,7 @@ func TestInsertMonitors(t *testing.T) {
 
 	monitors := []monitor{
 		{
-			ID:          1,
+			ID:          randomId(),
 			Host:        "127.0.0.1",
 			Memory:      1,
 			Cpu:         1.0,
@@ -247,7 +270,7 @@ func TestInsertMonitors(t *testing.T) {
 			Running:     true,
 		},
 		{
-			ID:          2,
+			ID:          randomId(),
 			Host:        "127.0.0.2",
 			Memory:      2,
 			Cpu:         2.0,
@@ -257,7 +280,7 @@ func TestInsertMonitors(t *testing.T) {
 		},
 	}
 
-	table, err := tbl.New(tableName)
+	table, err := tbl.New(monitorTableName)
 	assert.Nil(t, err)
 
 	assert.Nil(t, table.AddTagColumn("id", types.INT64))
@@ -281,7 +304,7 @@ func TestInsertMonitors(t *testing.T) {
 	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
 	assert.Equal(t, uint32(len(monitors)), resp.GetAffectedRows().GetValue())
 
-	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in (1, 2) order by id asc", tableName))
+	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in %s order by host asc", monitorTableName, getMonitorsIds(monitors)))
 	assert.Nil(t, err)
 
 	assert.Equal(t, len(monitors), len(monitors_))
@@ -292,14 +315,12 @@ func TestInsertMonitors(t *testing.T) {
 }
 
 func TestInsertMonitorWithNilFields(t *testing.T) {
-	tableName = "test_insert_monitor_with_nil_fields"
-
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 	ts := time.Now().Add(-1 * time.Minute).UnixMilli()
 	time := time.UnixMilli(ts).In(loc)
 	monitor := monitor{
-		ID:          11,
+		ID:          randomId(),
 		Host:        "127.0.0.1",
 		Memory:      1,
 		Cpu:         1.0,
@@ -308,7 +329,7 @@ func TestInsertMonitorWithNilFields(t *testing.T) {
 		Running:     true,
 	}
 
-	table, err := tbl.New(tableName)
+	table, err := tbl.New(monitorTableName)
 	assert.Nil(t, err)
 
 	assert.Nil(t, table.AddTagColumn("id", types.INT64))
@@ -328,7 +349,7 @@ func TestInsertMonitorWithNilFields(t *testing.T) {
 	assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
 	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
 
-	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id = %d", tableName, monitor.ID))
+	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id = %d", monitorTableName, monitor.ID))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(monitors_))
 	monitor_ := monitors_[0]
@@ -343,9 +364,7 @@ func TestInsertMonitorWithNilFields(t *testing.T) {
 	assert.Zero(t, monitor_.Temperature)
 }
 
-func TestInsertMonitorWithAllDatatypes(t *testing.T) {
-	tableName = "test_insert_monitor_with_all_datatypes"
-
+func TestInsertAllDatatypes(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 
@@ -367,7 +386,7 @@ func TestInsertMonitorWithAllDatatypes(t *testing.T) {
 	BINARY := []byte{1, 2, 3}
 	STRING := "string"
 
-	table, err := tbl.New(tableName)
+	table, err := tbl.New(datatypesTableName)
 	assert.Nil(t, err)
 
 	assert.Nil(t, table.AddTagColumn("int8", types.INT8))
@@ -457,8 +476,3 @@ func TestInsertMonitorWithAllDatatypes(t *testing.T) {
 	// MySQL protocol only supports microsecond precision for TIMESTAMP
 	assert.EqualValues(t, time_.UnixNano()/1000, result.TIMESTAMP_NANOSECOND_INT.UnixNano()/1000)
 }
-
-//TODO(yuanbohan):
-// unmatched length of columns in rows and columns in schema
-// support pointer
-// write pojo

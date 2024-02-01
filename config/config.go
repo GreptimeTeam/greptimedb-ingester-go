@@ -116,6 +116,6 @@ func (c *Config) BuildAuthHeader() *greptimepb.AuthHeader {
 
 }
 
-func (c *Config) GetGRPCAddr() string {
+func (c *Config) GetEndpoint() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
