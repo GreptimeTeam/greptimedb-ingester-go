@@ -32,7 +32,7 @@ type StreamClient struct {
 }
 
 func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
-	conn, err := grpc.Dial(cfg.GetGRPCAddr(), cfg.DialOptions...)
+	conn, err := grpc.Dial(cfg.GetEndpoint(), cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
