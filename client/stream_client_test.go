@@ -22,8 +22,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	tbl "github.com/GreptimeTeam/greptimedb-ingester-go/table"
@@ -35,13 +33,10 @@ var (
 )
 
 func newStreamClient() *StreamClient {
-	options := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
 	cfg := config.New(host).
 		WithPort(grpcPort).
 		WithDatabase(database).
-		WithDialOptions(options...)
+		WithKeepalive(30*time.Second, 5*time.Second)
 
 	client, err := NewStreamClient(cfg)
 	if err != nil {

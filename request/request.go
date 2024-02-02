@@ -17,30 +17,25 @@ package request
 import (
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 
-	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
 type Request struct {
-	header reqHeader
+	header *header.Header
 	tables []*table.Table
 }
 
-func New(tables ...*table.Table) *Request {
+func New(header *header.Header, tables ...*table.Table) *Request {
 	return &Request{
+		header: header,
 		tables: tables,
 	}
 }
 
-func (r *Request) IsTablesEmpty() bool {
-	return r.tables == nil || len(r.tables) == 0
-}
-
-func (r *Request) WithDatabase(database string) *Request {
-	r.header = reqHeader{
-		database: database,
-	}
+func (r *Request) WithHeader(header *header.Header) *Request {
+	r.header = header
 	return r
 }
 
@@ -53,12 +48,16 @@ func (r *Request) WithTables(tables ...*table.Table) *Request {
 	return r
 }
 
-func (r *Request) Build(cfg *config.Config) (*gpb.GreptimeRequest, error) {
-	if r.IsTablesEmpty() {
+func (r *Request) IsZero() bool {
+	return r.tables == nil || len(r.tables) == 0
+}
+
+func (r *Request) Build() (*gpb.GreptimeRequest, error) {
+	if r.IsZero() {
 		return nil, errs.ErrEmptyTable
 	}
 
-	header, err := r.header.build(cfg)
+	header, err := r.header.Build()
 	if err != nil {
 		return nil, err
 	}

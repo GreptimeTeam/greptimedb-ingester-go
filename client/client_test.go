@@ -27,8 +27,6 @@ import (
 	"github.com/ory/dockertest/v3"
 	dc "github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
@@ -41,6 +39,7 @@ import (
 // unmatched length of columns in rows and columns in schema
 // support pointer
 // write pojo
+// timeout test
 
 var (
 	monitorTableName   = "monitor"
@@ -148,13 +147,10 @@ func (p *Mysql) AllDatatypes() ([]datatype, error) {
 }
 
 func newClient() *Client {
-	options := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
 	cfg := config.New(host).
 		WithPort(grpcPort).
 		WithDatabase(database).
-		WithDialOptions(options...)
+		WithKeepalive(30*time.Second, 5*time.Second)
 
 	client, err := New(cfg)
 	if err != nil {

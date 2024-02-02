@@ -22,22 +22,24 @@ import (
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
 // StreamClient is only for inserting
 type StreamClient struct {
-	cfg    *config.Config
+	cfg *config.Config
+
 	client greptimepb.GreptimeDatabase_HandleRequestsClient
 }
 
 func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
-	conn, err := grpc.Dial(cfg.GetEndpoint(), cfg.DialOptions...)
+	conn, err := grpc.Dial(cfg.GetEndpoint(), cfg.Options().Build()...)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := greptimepb.NewGreptimeDatabaseClient(conn).HandleRequests(context.Background(), cfg.CallOptions...)
+	client, err := greptimepb.NewGreptimeDatabaseClient(conn).HandleRequests(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +48,12 @@ func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
 }
 
 func (c *StreamClient) Send(ctx context.Context, tables ...*table.Table) error {
-	req, err := request.New(tables...).Build(c.cfg)
+	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
+	request_, err := request.New(header_, tables...).Build()
 	if err != nil {
 		return err
 	}
-	return c.client.Send(req)
+	return c.client.Send(request_)
 }
 
 func (c *StreamClient) CloseAndRecv(ctx context.Context) (*greptimepb.AffectedRows, error) {

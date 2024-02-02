@@ -12,35 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package request
+package header
 
 import (
 	"testing"
 
-	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
 )
 
 func TestHeaderBuild(t *testing.T) {
-	h := &reqHeader{}
+	h := &Header{}
 
-	gh, err := h.build(&config.Config{})
+	gh, err := h.Build()
 	assert.ErrorIs(t, err, errs.ErrEmptyDatabaseName)
 	assert.Nil(t, gh)
 
-	gh, err = h.build(&config.Config{Database: "database"})
+	gh, err = h.WithDatabase("public").Build()
 	assert.Nil(t, err)
-	assert.Equal(t, &greptimepb.RequestHeader{
-		Dbname: "database",
-	}, gh)
+	assert.Equal(t, &gpb.RequestHeader{Dbname: "public"}, gh)
+	assert.Nil(t, gh.Authorization)
 
-	h.database = "db_in_header"
-	gh, err = h.build(&config.Config{Database: "database"})
+	gh, err = h.WithAuth("user", "pass").Build()
 	assert.Nil(t, err)
-	assert.Equal(t, &greptimepb.RequestHeader{
-		Dbname: "db_in_header",
-	}, gh)
+	assert.NotNil(t, gh.Authorization)
 }

@@ -22,6 +22,7 @@ import (
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
@@ -35,7 +36,7 @@ type Client struct {
 
 // New helps to create the greptimedb client, which will be responsible write data into GreptimeDB.
 func New(cfg *config.Config) (*Client, error) {
-	conn, err := grpc.Dial(cfg.GetEndpoint(), cfg.DialOptions...)
+	conn, err := grpc.Dial(cfg.GetEndpoint(), cfg.Options().Build()...)
 	if err != nil {
 		return nil, err
 	}
@@ -45,9 +46,10 @@ func New(cfg *config.Config) (*Client, error) {
 }
 
 func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*greptimepb.GreptimeResponse, error) {
-	req, err := request.New(tables...).Build(c.cfg)
+	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
+	request_, err := request.New(header_, tables...).Build()
 	if err != nil {
 		return nil, err
 	}
-	return c.client.Handle(ctx, req, c.cfg.CallOptions...)
+	return c.client.Handle(ctx, request_)
 }
