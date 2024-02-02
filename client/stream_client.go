@@ -22,6 +22,7 @@ import (
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
@@ -46,11 +47,12 @@ func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
 }
 
 func (c *StreamClient) Send(ctx context.Context, tables ...*table.Table) error {
-	req, err := request.New(tables...).Build(c.cfg)
+	header_ := header.New().WithDatabase(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
+	request_, err := request.New().WithTables(tables...).WithHeader(header_).Build()
 	if err != nil {
 		return err
 	}
-	return c.client.Send(req)
+	return c.client.Send(request_)
 }
 
 func (c *StreamClient) CloseAndRecv(ctx context.Context) (*greptimepb.AffectedRows, error) {

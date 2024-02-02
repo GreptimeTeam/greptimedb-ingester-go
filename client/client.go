@@ -22,6 +22,7 @@ import (
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
@@ -45,9 +46,10 @@ func New(cfg *config.Config) (*Client, error) {
 }
 
 func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*greptimepb.GreptimeResponse, error) {
-	req, err := request.New(tables...).Build(c.cfg)
+	header_ := header.New().WithDatabase(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
+	request_, err := request.New().WithTables(tables...).WithHeader(header_).Build()
 	if err != nil {
 		return nil, err
 	}
-	return c.client.Handle(ctx, req, c.cfg.CallOptions...)
+	return c.client.Handle(ctx, request_, c.cfg.CallOptions...)
 }

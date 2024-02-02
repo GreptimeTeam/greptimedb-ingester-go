@@ -17,10 +17,7 @@ package config
 import (
 	"fmt"
 
-	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"google.golang.org/grpc"
-
-	gutil "github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
 // Config is to define how the Client behaves.
@@ -97,23 +94,6 @@ func (c *Config) WithCallOptions(options ...grpc.CallOption) *Config {
 
 	c.CallOptions = append(c.CallOptions, options...)
 	return c
-}
-
-// buildAuthHeader only supports Basic Auth so far
-func (c *Config) BuildAuthHeader() *greptimepb.AuthHeader {
-	if gutil.IsEmptyString(c.Username) || gutil.IsEmptyString(c.Password) {
-		return nil
-	}
-
-	return &greptimepb.AuthHeader{
-		AuthScheme: &greptimepb.AuthHeader_Basic{
-			Basic: &greptimepb.Basic{
-				Username: c.Username,
-				Password: c.Password,
-			},
-		},
-	}
-
 }
 
 func (c *Config) GetEndpoint() string {
