@@ -36,7 +36,7 @@ type Client struct {
 
 // New helps to create the greptimedb client, which will be responsible write data into GreptimeDB.
 func New(cfg *config.Config) (*Client, error) {
-	conn, err := grpc.Dial(cfg.GetEndpoint(), cfg.DialOptions...)
+	conn, err := grpc.Dial(cfg.GetEndpoint(), cfg.Options().Build()...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,10 +46,10 @@ func New(cfg *config.Config) (*Client, error) {
 }
 
 func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*greptimepb.GreptimeResponse, error) {
-	header_ := header.New().WithDatabase(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
-	request_, err := request.New().WithTables(tables...).WithHeader(header_).Build()
+	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
+	request_, err := request.New(header_, tables...).Build()
 	if err != nil {
 		return nil, err
 	}
-	return c.client.Handle(ctx, request_, c.cfg.CallOptions...)
+	return c.client.Handle(ctx, request_)
 }

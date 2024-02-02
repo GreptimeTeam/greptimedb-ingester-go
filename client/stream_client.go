@@ -28,17 +28,18 @@ import (
 
 // StreamClient is only for inserting
 type StreamClient struct {
-	cfg    *config.Config
+	cfg *config.Config
+
 	client greptimepb.GreptimeDatabase_HandleRequestsClient
 }
 
 func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
-	conn, err := grpc.Dial(cfg.GetEndpoint(), cfg.DialOptions...)
+	conn, err := grpc.Dial(cfg.GetEndpoint(), cfg.Options().Build()...)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := greptimepb.NewGreptimeDatabaseClient(conn).HandleRequests(context.Background(), cfg.CallOptions...)
+	client, err := greptimepb.NewGreptimeDatabaseClient(conn).HandleRequests(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +48,8 @@ func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
 }
 
 func (c *StreamClient) Send(ctx context.Context, tables ...*table.Table) error {
-	header_ := header.New().WithDatabase(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
-	request_, err := request.New().WithTables(tables...).WithHeader(header_).Build()
+	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
+	request_, err := request.New(header_, tables...).Build()
 	if err != nil {
 		return err
 	}

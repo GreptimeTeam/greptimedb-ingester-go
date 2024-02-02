@@ -26,8 +26,10 @@ type Header struct {
 	auth     Auth
 }
 
-func New() *Header {
-	return &Header{}
+func New(database string) *Header {
+	return &Header{
+		database: database,
+	}
 }
 
 func (h *Header) WithDatabase(database string) *Header {

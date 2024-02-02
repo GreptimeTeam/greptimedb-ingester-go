@@ -16,8 +16,9 @@ package config
 
 import (
 	"fmt"
+	"time"
 
-	"google.golang.org/grpc"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/config/options"
 )
 
 // Config is to define how the Client behaves.
@@ -37,12 +38,8 @@ type Config struct {
 	Password string
 	Database string // the default database
 
-	// DialOptions are passed to grpc.DialContext
-	// when a new gRPC connection is to be created.
-	DialOptions []grpc.DialOption
-
-	// CallOptions are passed to StreamClient
-	CallOptions []grpc.CallOption
+	keepaliveInterval time.Duration
+	keepaliveTimeout  time.Duration
 }
 
 // New helps to init Config with host only
@@ -50,12 +47,6 @@ func New(host string) *Config {
 	return &Config{
 		Host: host,
 		Port: 4001,
-
-		DialOptions: []grpc.DialOption{
-			grpc.WithUserAgent("greptimedb-ingester-go"),
-		},
-
-		CallOptions: []grpc.CallOption{},
 	}
 }
 
@@ -78,24 +69,30 @@ func (c *Config) WithAuth(username, password string) *Config {
 	return c
 }
 
-func (c *Config) WithDialOptions(options ...grpc.DialOption) *Config {
-	if c.DialOptions == nil {
-		c.DialOptions = []grpc.DialOption{}
-	}
-
-	c.DialOptions = append(c.DialOptions, options...)
-	return c
-}
-
-func (c *Config) WithCallOptions(options ...grpc.CallOption) *Config {
-	if c.CallOptions == nil {
-		c.CallOptions = []grpc.CallOption{}
-	}
-
-	c.CallOptions = append(c.CallOptions, options...)
+func (c *Config) WithKeepalive(interval, timeout time.Duration) *Config {
+	c.keepaliveInterval = interval
+	c.keepaliveTimeout = timeout
 	return c
 }
 
 func (c *Config) GetEndpoint() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+}
+
+func (c *Config) Options() *options.Options {
+	if c.keepaliveInterval == 0 && c.keepaliveTimeout == 0 {
+		return nil
+	}
+
+	keepalive := options.NewKeepaliveOptions()
+
+	if c.keepaliveInterval != 0 {
+		keepalive.WithInterval(c.keepaliveInterval)
+	}
+
+	if c.keepaliveTimeout != 0 {
+		keepalive.WithTimeout(c.keepaliveTimeout)
+	}
+
+	return options.New(keepalive)
 }

@@ -27,8 +27,11 @@ type Request struct {
 	tables []*table.Table
 }
 
-func New() *Request {
-	return &Request{}
+func New(header *header.Header, tables ...*table.Table) *Request {
+	return &Request{
+		header: header,
+		tables: tables,
+	}
 }
 
 func (r *Request) WithHeader(header *header.Header) *Request {

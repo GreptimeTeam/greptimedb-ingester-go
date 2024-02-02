@@ -37,6 +37,5 @@ func TestHeaderBuild(t *testing.T) {
 
 	gh, err = h.WithAuth("user", "pass").Build()
 	assert.Nil(t, err)
-	assert.Equal(t, &gpb.RequestHeader{Dbname: "public"}, gh)
 	assert.NotNil(t, gh.Authorization)
 }
