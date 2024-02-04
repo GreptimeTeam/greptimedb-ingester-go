@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"strings"
 
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 )
@@ -57,9 +58,107 @@ const (
 	// DURATION_MICROSECOND    ColumnType = 28
 	// DURATION_NANOSECOND     ColumnType = 29
 	// DECIMAL128              ColumnType = 30
+
+	// the following types are not from protocol buffer
+	INT  ColumnType = 101
+	UINT ColumnType = 102
 )
 
-func GetColumnType(type_ ColumnType) (gpb.ColumnDataType, error) {
+func (type_ ColumnType) String() string {
+	switch type_ {
+	case BOOLEAN:
+		return "BOOLEAN"
+	case INT8:
+		return "INT8"
+	case INT16:
+		return "INT16"
+	case INT32:
+		return "INT32"
+	case INT64:
+		return "INT64"
+	case INT:
+		return "INT"
+	case UINT8:
+		return "UINT8"
+	case UINT16:
+		return "UINT16"
+	case UINT32:
+		return "UINT32"
+	case UINT64:
+		return "UINT64"
+	case UINT:
+		return "UINT"
+	case FLOAT32:
+		return "FLOAT32"
+	case FLOAT64:
+		return "FLOAT64"
+	case BINARY:
+		return "BINARY"
+	case STRING:
+		return "STRING"
+	case DATE:
+		return "DATE"
+	case DATETIME:
+		return "DATETIME"
+	case TIMESTAMP_SECOND:
+		return "TIMESTAMP_SECOND"
+	case TIMESTAMP_MILLISECOND:
+		return "TIMESTAMP_MILLISECOND"
+	case TIMESTAMP_MICROSECOND:
+		return "TIMESTAMP_MICROSECOND"
+	case TIMESTAMP_NANOSECOND:
+		return "TIMESTAMP_NANOSECOND"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func ParseColumnType(type_ string) (gpb.ColumnDataType, error) {
+	switch strings.ToUpper(type_) {
+	case BOOLEAN.String():
+		return gpb.ColumnDataType_BOOLEAN, nil
+	case INT8.String():
+		return gpb.ColumnDataType_INT8, nil
+	case INT16.String():
+		return gpb.ColumnDataType_INT16, nil
+	case INT32.String():
+		return gpb.ColumnDataType_INT32, nil
+	case INT64.String(), INT.String():
+		return gpb.ColumnDataType_INT64, nil
+	case UINT8.String():
+		return gpb.ColumnDataType_UINT8, nil
+	case UINT16.String():
+		return gpb.ColumnDataType_UINT16, nil
+	case UINT32.String():
+		return gpb.ColumnDataType_UINT32, nil
+	case UINT64.String(), UINT.String():
+		return gpb.ColumnDataType_UINT64, nil
+	case FLOAT32.String():
+		return gpb.ColumnDataType_FLOAT32, nil
+	case FLOAT64.String():
+		return gpb.ColumnDataType_FLOAT64, nil
+	case BINARY.String():
+		return gpb.ColumnDataType_BINARY, nil
+	case STRING.String():
+		return gpb.ColumnDataType_STRING, nil
+	case DATE.String():
+		return gpb.ColumnDataType_DATE, nil
+	case DATETIME.String():
+		return gpb.ColumnDataType_DATETIME, nil
+	case TIMESTAMP_SECOND.String():
+		return gpb.ColumnDataType_TIMESTAMP_SECOND, nil
+	case TIMESTAMP_MILLISECOND.String():
+		return gpb.ColumnDataType_TIMESTAMP_MILLISECOND, nil
+	case TIMESTAMP_MICROSECOND.String():
+		return gpb.ColumnDataType_TIMESTAMP_MICROSECOND, nil
+	case TIMESTAMP_NANOSECOND.String():
+		return gpb.ColumnDataType_TIMESTAMP_NANOSECOND, nil
+	default:
+		return 0, fmt.Errorf("unsupported column type %s", type_)
+	}
+}
+
+func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 	switch type_ {
 	case BOOLEAN:
 		return gpb.ColumnDataType_BOOLEAN, nil
@@ -69,7 +168,7 @@ func GetColumnType(type_ ColumnType) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_INT16, nil
 	case INT32:
 		return gpb.ColumnDataType_INT32, nil
-	case INT64:
+	case INT64, INT:
 		return gpb.ColumnDataType_INT64, nil
 	case UINT8:
 		return gpb.ColumnDataType_UINT8, nil
@@ -77,7 +176,7 @@ func GetColumnType(type_ ColumnType) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_UINT16, nil
 	case UINT32:
 		return gpb.ColumnDataType_UINT32, nil
-	case UINT64:
+	case UINT64, UINT:
 		return gpb.ColumnDataType_UINT64, nil
 	case FLOAT32:
 		return gpb.ColumnDataType_FLOAT32, nil

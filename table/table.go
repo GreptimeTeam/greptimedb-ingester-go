@@ -22,6 +22,7 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/cell"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
 // Table is a struct that holds the table name, columns, and rows.
@@ -66,7 +67,7 @@ func (t *Table) addColumn(name string, semanticType gpb.SemanticType, dataType g
 }
 
 func (t *Table) AddTagColumn(name string, type_ types.ColumnType) error {
-	typ, err := types.GetColumnType(type_)
+	typ, err := types.ConvertType(type_)
 	if err != nil {
 		return err
 	}
@@ -75,7 +76,7 @@ func (t *Table) AddTagColumn(name string, type_ types.ColumnType) error {
 }
 
 func (t *Table) AddFieldColumn(name string, type_ types.ColumnType) error {
-	typ, err := types.GetColumnType(type_)
+	typ, err := types.ConvertType(type_)
 	if err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func (t *Table) AddFieldColumn(name string, type_ types.ColumnType) error {
 
 // AddTimestampColumn helps to add the time index column
 func (t *Table) AddTimestampColumn(name string, type_ types.ColumnType) error {
-	typ, err := types.GetColumnType(type_)
+	typ, err := types.ConvertType(type_)
 	if err != nil {
 		return err
 	}
@@ -154,7 +155,7 @@ func (t *Table) WithSanitate(sanitate_needed bool) *Table {
 // sanitate_if_needed table and column name to snake and lower case.
 func (t *Table) sanitate_if_needed(name string) (string, error) {
 	if t.sanitate_needed {
-		return sanitate(name)
+		return util.SanitateName(name)
 	}
 	return name, nil
 }
