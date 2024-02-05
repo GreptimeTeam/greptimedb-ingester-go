@@ -237,3 +237,79 @@ func TestParseSchemaWithTags(t *testing.T) {
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 }
+
+func TestParseTimestampViaIntType(t *testing.T) {
+
+	assertSchema := func(t *testing.T, schema Schema) {
+		assert.Equal(t, "monitor", schema.Name)
+		assert.Len(t, schema.Fields, 6)
+
+		assert.EqualValues(t, newField("date_column", gpb.SemanticType_TAG, gpb.ColumnDataType_DATE), schema.Fields[0])
+		assert.EqualValues(t, newField("datetime_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATETIME), schema.Fields[1])
+		assert.EqualValues(t, newField("timestamp_second_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_SECOND), schema.Fields[2])
+		assert.EqualValues(t, newField("timestamp_millisecond_column", gpb.SemanticType_TIMESTAMP, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), schema.Fields[3])
+		assert.EqualValues(t, newField("timestamp_microsecond_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), schema.Fields[4])
+		assert.EqualValues(t, newField("timestamp_nanosecond_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), schema.Fields[5])
+	}
+
+	type Monitor struct {
+		DATE                  int64 `greptime:"tag;column:date_column;type:date"`
+		DATETIME              int64 `greptime:"field;column:datetime_column;type:datetime"`
+		TIMESTAMP_SECOND      int64 `greptime:"field;column:timestamp_second_column;type:timestamp;precision:second"`
+		TIMESTAMP_MILLISECOND int64 `greptime:"timestamp;column:timestamp_millisecond_column;type:timestamp;precision:millisecond"`
+		TIMESTAMP_MICROSECOND int64 `greptime:"field;column:timestamp_microsecond_column;type:timestamp;precision:microsecond"`
+		TIMESTAMP_NANOSECOND  int64 `greptime:"field;column:timestamp_nanosecond_column;type:timestamp;precision:nanosecond"`
+	}
+
+	schema, err := parseSchema(Monitor{})
+	assert.Nil(t, err)
+	assertSchema(t, *schema)
+
+	schema, err = parseSchema(&Monitor{})
+	assert.Nil(t, err)
+	assertSchema(t, *schema)
+
+	schema, err = parseSchema([]Monitor{{}})
+	assert.Nil(t, err)
+	assertSchema(t, *schema)
+
+	var monitor *Monitor
+	schema, err = parseSchema(monitor)
+	assert.Nil(t, err)
+	assertSchema(t, *schema)
+}
+
+type MonitorWithTableName struct {
+	INT int64 `greptime:"column:int_column;type:int32"`
+}
+
+func (m *MonitorWithTableName) TableName() string {
+	return "monitor_table_name_by_function"
+}
+
+func TestParseWithTableName(t *testing.T) {
+
+	assertSchema := func(t *testing.T, schema Schema) {
+		assert.Equal(t, "monitor_table_name_by_function", schema.Name)
+		assert.Len(t, schema.Fields, 1)
+
+		assert.EqualValues(t, newField("int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT32), schema.Fields[0])
+	}
+
+	schema, err := parseSchema(MonitorWithTableName{})
+	assert.Nil(t, err)
+	assertSchema(t, *schema)
+
+	schema, err = parseSchema(&MonitorWithTableName{})
+	assert.Nil(t, err)
+	assertSchema(t, *schema)
+
+	schema, err = parseSchema([]MonitorWithTableName{{}})
+	assert.Nil(t, err)
+	assertSchema(t, *schema)
+
+	var monitor *MonitorWithTableName
+	schema, err = parseSchema(monitor)
+	assert.Nil(t, err)
+	assertSchema(t, *schema)
+}

@@ -223,11 +223,9 @@ func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_DATE, nil
 	case DATETIME:
 		return gpb.ColumnDataType_DATETIME, nil
-	case TIMESTAMP:
-		return gpb.ColumnDataType_TIMESTAMP_MILLISECOND, nil
 	case TIMESTAMP_SECOND:
 		return gpb.ColumnDataType_TIMESTAMP_SECOND, nil
-	case TIMESTAMP_MILLISECOND:
+	case TIMESTAMP_MILLISECOND, TIMESTAMP:
 		return gpb.ColumnDataType_TIMESTAMP_MILLISECOND, nil
 	case TIMESTAMP_MICROSECOND:
 		return gpb.ColumnDataType_TIMESTAMP_MICROSECOND, nil
