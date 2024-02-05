@@ -584,15 +584,104 @@ func TestParseWithValues(t *testing.T) {
 		privateField: "private",
 	}
 
-	tbl, err := Parse(monitor)
-	assert.Nil(t, err)
-	assert.NotNil(t, tbl)
+	{ // one monitor
+		tbl, err := Parse(monitor)
+		assert.Nil(t, err)
+		assert.NotNil(t, tbl)
 
-	rows := tbl.GetRows()
-	assert.NotNil(t, rows)
+		rows := tbl.GetRows()
+		assert.NotNil(t, rows)
 
-	assertSchema(rows.Schema)
-	for _, row := range rows.Rows {
-		assertValue(row)
+		assertSchema(rows.Schema)
+
+		assert.Len(t, rows.Rows, 1)
+		for _, row := range rows.Rows {
+			assertValue(row)
+		}
 	}
+
+	{ // one pointer monitor
+		tbl, err := Parse(&monitor)
+		assert.Nil(t, err)
+		assert.NotNil(t, tbl)
+
+		rows := tbl.GetRows()
+		assert.NotNil(t, rows)
+
+		assertSchema(rows.Schema)
+
+		assert.Len(t, rows.Rows, 1)
+		for _, row := range rows.Rows {
+			assertValue(row)
+		}
+	}
+
+	{ // monitor slice
+		monitors := []Monitor{monitor, monitor, monitor}
+		tbl, err := Parse(monitors)
+		assert.Nil(t, err)
+		assert.NotNil(t, tbl)
+
+		rows := tbl.GetRows()
+		assert.NotNil(t, rows)
+
+		assertSchema(rows.Schema)
+
+		assert.Len(t, rows.Rows, len(monitors))
+		for _, row := range rows.Rows {
+			assertValue(row)
+		}
+	}
+
+	{ // pointer monitor slice
+		monitors := []Monitor{monitor, monitor, monitor}
+		tbl, err := Parse(&monitors)
+		assert.Nil(t, err)
+		assert.NotNil(t, tbl)
+
+		rows := tbl.GetRows()
+		assert.NotNil(t, rows)
+
+		assertSchema(rows.Schema)
+
+		assert.Len(t, rows.Rows, len(monitors))
+		for _, row := range rows.Rows {
+			assertValue(row)
+		}
+	}
+
+	{ // monitor pointer slice
+		monitors := []*Monitor{&monitor, &monitor, &monitor}
+		tbl, err := Parse(monitors)
+		assert.Nil(t, err)
+		assert.NotNil(t, tbl)
+
+		rows := tbl.GetRows()
+		assert.NotNil(t, rows)
+
+		assertSchema(rows.Schema)
+
+		assert.Len(t, rows.Rows, len(monitors))
+		for _, row := range rows.Rows {
+			assertValue(row)
+		}
+	}
+
+	{ // monitor pointer slice
+		monitors := []*Monitor{&monitor, &monitor, &monitor}
+		tbl, err := Parse(&monitors)
+		assert.Nil(t, err)
+		assert.NotNil(t, tbl)
+
+		rows := tbl.GetRows()
+		assert.NotNil(t, rows)
+
+		assertSchema(rows.Schema)
+
+		assert.Len(t, rows.Rows, len(monitors))
+		for _, row := range rows.Rows {
+			assertValue(row)
+		}
+	}
+
 }
