@@ -21,6 +21,34 @@ import (
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 )
 
+type TimestampPrecision string
+
+const (
+	SECOND      TimestampPrecision = "second"
+	MILLISECOND TimestampPrecision = "millisecond"
+	MICROSECOND TimestampPrecision = "microsecond"
+	NANOSECOND  TimestampPrecision = "nanosecond"
+)
+
+func (p TimestampPrecision) String() string {
+	return string(p)
+}
+
+func ParseTimestampPrecision(precision string) gpb.ColumnDataType {
+	switch strings.ToLower(precision) {
+	case SECOND.String():
+		return gpb.ColumnDataType_TIMESTAMP_SECOND
+	case MILLISECOND.String():
+		return gpb.ColumnDataType_TIMESTAMP_MILLISECOND
+	case MICROSECOND.String():
+		return gpb.ColumnDataType_TIMESTAMP_MICROSECOND
+	case NANOSECOND.String():
+		return gpb.ColumnDataType_TIMESTAMP_NANOSECOND
+	default:
+		return gpb.ColumnDataType_TIMESTAMP_MILLISECOND
+	}
+}
+
 type ColumnType int
 
 // DO NOT CHANGE THE ORDER OF THESE CONSTANTS
@@ -60,8 +88,9 @@ const (
 	// DECIMAL128              ColumnType = 30
 
 	// the following types are not from protocol buffer
-	INT  ColumnType = 101
-	UINT ColumnType = 102
+	INT       ColumnType = 101
+	UINT      ColumnType = 102
+	TIMESTAMP ColumnType = 103
 )
 
 func (type_ ColumnType) String() string {
@@ -100,6 +129,8 @@ func (type_ ColumnType) String() string {
 		return "DATE"
 	case DATETIME:
 		return "DATETIME"
+	case TIMESTAMP:
+		return "TIMESTAMP"
 	case TIMESTAMP_SECOND:
 		return "TIMESTAMP_SECOND"
 	case TIMESTAMP_MILLISECOND:
@@ -113,7 +144,7 @@ func (type_ ColumnType) String() string {
 	}
 }
 
-func ParseColumnType(type_ string) (gpb.ColumnDataType, error) {
+func ParseColumnType(type_, precision string) (gpb.ColumnDataType, error) {
 	switch strings.ToUpper(type_) {
 	case BOOLEAN.String():
 		return gpb.ColumnDataType_BOOLEAN, nil
@@ -145,6 +176,8 @@ func ParseColumnType(type_ string) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_DATE, nil
 	case DATETIME.String():
 		return gpb.ColumnDataType_DATETIME, nil
+	case TIMESTAMP.String():
+		return ParseTimestampPrecision(precision), nil
 	case TIMESTAMP_SECOND.String():
 		return gpb.ColumnDataType_TIMESTAMP_SECOND, nil
 	case TIMESTAMP_MILLISECOND.String():
@@ -154,7 +187,7 @@ func ParseColumnType(type_ string) (gpb.ColumnDataType, error) {
 	case TIMESTAMP_NANOSECOND.String():
 		return gpb.ColumnDataType_TIMESTAMP_NANOSECOND, nil
 	default:
-		return 0, fmt.Errorf("unsupported column type %s", type_)
+		return 0, fmt.Errorf("parse: unsupported column type %q", type_)
 	}
 }
 
@@ -190,6 +223,8 @@ func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_DATE, nil
 	case DATETIME:
 		return gpb.ColumnDataType_DATETIME, nil
+	case TIMESTAMP:
+		return gpb.ColumnDataType_TIMESTAMP_MILLISECOND, nil
 	case TIMESTAMP_SECOND:
 		return gpb.ColumnDataType_TIMESTAMP_SECOND, nil
 	case TIMESTAMP_MILLISECOND:
@@ -199,7 +234,7 @@ func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 	case TIMESTAMP_NANOSECOND:
 		return gpb.ColumnDataType_TIMESTAMP_NANOSECOND, nil
 	default:
-		return 0, fmt.Errorf("unsupported column type %d", type_)
+		return 0, fmt.Errorf("convert: unsupported column type %q", type_.String())
 	}
 
 }

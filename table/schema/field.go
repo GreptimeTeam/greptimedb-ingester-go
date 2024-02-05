@@ -30,25 +30,26 @@ type Field struct {
 	Datatype     gpb.ColumnDataType // default is the value type
 }
 
+func newField(columnName string, semanticType gpb.SemanticType, datatype gpb.ColumnDataType) Field {
+	return Field{Name: columnName, SemanticType: semanticType, Datatype: datatype}
+}
+
 func parseField(structField reflect.StructField) (*Field, error) {
-	field := &Field{}
 	tags := parseTag(structField.Tag.Get("greptime"), ";")
 
 	columnName, err := util.SanitateName(structField.Name)
 	if err != nil {
 		return nil, err
 	}
-	if val, ok := tags["COLUMN"]; ok {
-		columnName = val
+	if col, ok := tags["COLUMN"]; ok {
+		columnName = col
 	}
-	field.Name = columnName
 
+	semanticType := gpb.SemanticType_FIELD
 	if _, ok := tags["TAG"]; ok {
-		field.SemanticType = gpb.SemanticType_TAG
+		semanticType = gpb.SemanticType_TAG
 	} else if _, ok := tags["TIMESTAMP"]; ok {
-		field.SemanticType = gpb.SemanticType_TIMESTAMP
-	} else {
-		field.SemanticType = gpb.SemanticType_FIELD
+		semanticType = gpb.SemanticType_TIMESTAMP
 	}
 
 	typ, err := parseTypeKind(structField.Type)
@@ -56,15 +57,15 @@ func parseField(structField reflect.StructField) (*Field, error) {
 		return nil, err
 	}
 	if val, ok := tags["TYPE"]; ok {
-		typ_, err := types.ParseColumnType(val)
+		typ_, err := types.ParseColumnType(val, tags["PRECISION"])
 		if err != nil {
 			return nil, err
 		}
 		typ = typ_
 	}
-	field.Datatype = typ
 
-	return field, nil
+	field := newField(columnName, semanticType, typ)
+	return &field, nil
 }
 
 func parseTag(str string, sep string) map[string]string {
