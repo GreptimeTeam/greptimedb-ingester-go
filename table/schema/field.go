@@ -18,8 +18,11 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table/cell"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
@@ -35,7 +38,7 @@ func newField(columnName string, semanticType gpb.SemanticType, datatype gpb.Col
 }
 
 func parseField(structField reflect.StructField) (*Field, error) {
-	tags := parseTag(structField.Tag.Get("greptime"), ";")
+	tags := parseTag(structField)
 
 	columnName, err := util.SanitateName(structField.Name)
 	if err != nil {
@@ -52,7 +55,7 @@ func parseField(structField reflect.StructField) (*Field, error) {
 		semanticType = gpb.SemanticType_TIMESTAMP
 	}
 
-	typ, err := parseTypeKind(structField.Type)
+	typ, err := parseType(structField.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -68,10 +71,15 @@ func parseField(structField reflect.StructField) (*Field, error) {
 	return &field, nil
 }
 
-func parseTag(str string, sep string) map[string]string {
+func parseTag(structField reflect.StructField) map[string]string {
 	tags := map[string]string{}
-	names := strings.Split(str, sep)
 
+	str, ok := structField.Tag.Lookup("greptime")
+	if !ok {
+		return tags
+	}
+
+	names := strings.Split(str, ";")
 	for i := 0; i < len(names); i++ {
 		values := strings.Split(names[i], ":")
 		k := strings.TrimSpace(strings.ToUpper(values[0]))
@@ -86,7 +94,7 @@ func parseTag(str string, sep string) map[string]string {
 	return tags
 }
 
-func parseTypeKind(typ reflect.Type) (gpb.ColumnDataType, error) {
+func parseType(typ reflect.Type) (gpb.ColumnDataType, error) {
 	switch kind := typ.Kind(); kind {
 	case reflect.Bool:
 		return gpb.ColumnDataType_BOOLEAN, nil
@@ -122,7 +130,7 @@ func parseTypeKind(typ reflect.Type) (gpb.ColumnDataType, error) {
 			return -1, fmt.Errorf("unsupported type %q", kind.String())
 		}
 	case reflect.Pointer:
-		return parseTypeKind(typ.Elem())
+		return parseType(typ.Elem())
 	case reflect.String:
 		return gpb.ColumnDataType_STRING, nil
 	case reflect.Struct:
@@ -134,5 +142,99 @@ func parseTypeKind(typ reflect.Type) (gpb.ColumnDataType, error) {
 
 	default:
 		return -1, fmt.Errorf("unsupported type %q", kind.String())
+	}
+}
+
+func parseTimeValue(val reflect.Value) (*time.Time, error) {
+	method := val.MethodByName("UnixNano")
+	if !method.IsValid() {
+		return nil, fmt.Errorf("type %T of %#v does not have UnixNano method", val, val)
+	}
+	results := method.Call([]reflect.Value{})
+	t := time.Unix(0, results[0].Int())
+	return &t, nil
+}
+
+func parseIntOrTimeValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
+	if val.CanInt() {
+		return cell.New(val.Int(), typ).Build()
+	}
+
+	if val.CanUint() {
+		return cell.New(val.Uint(), typ).Build()
+	}
+
+	if val.Type().PkgPath() == "time" && val.Type().Name() == "Time" {
+		t, err := parseTimeValue(val)
+		if err != nil {
+			return nil, err
+		}
+		return cell.New(*t, typ).Build()
+	}
+
+	return nil, fmt.Errorf("unsupported type %T of %#v", val, val)
+}
+
+func parseValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
+	switch typ {
+
+	case gpb.ColumnDataType_INT8, gpb.ColumnDataType_INT16, gpb.ColumnDataType_INT32, gpb.ColumnDataType_INT64:
+		return cell.New(val.Int(), typ).Build()
+
+	case gpb.ColumnDataType_UINT8, gpb.ColumnDataType_UINT16, gpb.ColumnDataType_UINT32, gpb.ColumnDataType_UINT64:
+		return cell.New(val.Uint(), typ).Build()
+
+	case gpb.ColumnDataType_FLOAT32, gpb.ColumnDataType_FLOAT64:
+		return cell.New(val.Float(), typ).Build()
+
+	case gpb.ColumnDataType_BOOLEAN:
+		return cell.New(val.Bool(), typ).Build()
+
+	case gpb.ColumnDataType_BINARY:
+		return cell.New(val.Bytes(), typ).Build()
+
+	case gpb.ColumnDataType_STRING:
+		return cell.New(val.String(), typ).Build()
+
+	case gpb.ColumnDataType_DATE:
+		return parseIntOrTimeValue(typ, val)
+	case gpb.ColumnDataType_DATETIME:
+		return parseIntOrTimeValue(typ, val)
+
+	case gpb.ColumnDataType_TIMESTAMP_SECOND:
+		return parseIntOrTimeValue(typ, val)
+	case gpb.ColumnDataType_TIMESTAMP_MILLISECOND:
+		return parseIntOrTimeValue(typ, val)
+	case gpb.ColumnDataType_TIMESTAMP_MICROSECOND:
+		return parseIntOrTimeValue(typ, val)
+	case gpb.ColumnDataType_TIMESTAMP_NANOSECOND:
+		return parseIntOrTimeValue(typ, val)
+
+	case gpb.ColumnDataType_TIME_SECOND:
+		return parseIntOrTimeValue(typ, val)
+	case gpb.ColumnDataType_TIME_MILLISECOND:
+		return parseIntOrTimeValue(typ, val)
+	case gpb.ColumnDataType_TIME_MICROSECOND:
+		return parseIntOrTimeValue(typ, val)
+	case gpb.ColumnDataType_TIME_NANOSECOND:
+		return parseIntOrTimeValue(typ, val)
+
+	case gpb.ColumnDataType_INTERVAL_YEAR_MONTH,
+		gpb.ColumnDataType_INTERVAL_DAY_TIME,
+		gpb.ColumnDataType_INTERVAL_MONTH_DAY_NANO:
+		return nil, fmt.Errorf("INTERVAL not implemented yet for %#v", val)
+
+	case gpb.ColumnDataType_DURATION_SECOND,
+		gpb.ColumnDataType_DURATION_MILLISECOND,
+		gpb.ColumnDataType_DURATION_MICROSECOND,
+		gpb.ColumnDataType_DURATION_NANOSECOND:
+		return nil, fmt.Errorf("DURATION not supported for %#v", val)
+
+	// TODO(yuanbohan): support decimal 128
+	case gpb.ColumnDataType_DECIMAL128:
+		return nil, fmt.Errorf("DECIMAL 128 not supported for %#v", val)
+	default:
+		return nil, fmt.Errorf("unknown column data type: %v", typ)
+
 	}
 }

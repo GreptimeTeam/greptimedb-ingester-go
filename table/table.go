@@ -133,11 +133,11 @@ func (t *Table) AddRow(inputs ...any) error {
 }
 
 func (t *Table) IsColumnEmpty() bool {
-	return t.columnsSchema == nil || len(t.columnsSchema) == 0
+	return len(t.columnsSchema) == 0
 }
 
 func (t *Table) IsRowEmpty() bool {
-	return t.rows == nil || t.rows.Rows == nil || len(t.rows.Rows) == 0
+	return t.rows == nil || len(t.rows.Rows) == 0
 }
 
 func (t *Table) IsEmpty() bool {
@@ -151,8 +151,6 @@ func (t *Table) WithSanitate(sanitate_needed bool) *Table {
 	return t
 }
 
-// WithSanitate to change the sanitate_if_needed behavior. Default is true.
-// sanitate_if_needed table and column name to snake and lower case.
 func (t *Table) sanitate_if_needed(name string) (string, error) {
 	if t.sanitate_needed {
 		return util.SanitateName(name)
