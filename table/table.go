@@ -151,6 +151,27 @@ func (t *Table) WithSanitate(sanitate_needed bool) *Table {
 	return t
 }
 
+func (t *Table) WithColumnsSchema(columnsSchema []*gpb.ColumnSchema) *Table {
+	t.columnsSchema = columnsSchema
+	return t
+}
+
+func (t *Table) WithRows(rows *gpb.Rows) *Table {
+	t.rows = rows
+	return t
+}
+
+func (t *Table) GetName() (string, error) {
+	return t.sanitate_if_needed(t.name)
+}
+
+func (t *Table) GetRows() *gpb.Rows {
+	if t.rows != nil && t.rows.Schema == nil {
+		t.rows.Schema = t.columnsSchema
+	}
+	return t.rows
+}
+
 func (t *Table) sanitate_if_needed(name string) (string, error) {
 	if t.sanitate_needed {
 		return util.SanitateName(name)
@@ -159,23 +180,18 @@ func (t *Table) sanitate_if_needed(name string) (string, error) {
 }
 
 func (t *Table) ToRequest() (*gpb.RowInsertRequest, error) {
-	name, err := t.sanitate_if_needed(t.name)
-	if err != nil {
-		return nil, err
-	}
-
 	if t.IsEmpty() {
 		return nil, errs.ErrEmptyTable
 	}
 
-	rows := t.rows
-	if rows.Schema == nil {
-		rows.Schema = t.columnsSchema
+	name, err := t.GetName()
+	if err != nil {
+		return nil, err
 	}
 
 	req := &gpb.RowInsertRequest{
 		TableName: name,
-		Rows:      rows,
+		Rows:      t.GetRows(),
 	}
 	return req, nil
 }

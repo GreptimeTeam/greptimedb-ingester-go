@@ -33,9 +33,22 @@ type Field struct {
 	Datatype     gpb.ColumnDataType // default is the value type
 }
 
+func (f Field) ToColumnSchema() *gpb.ColumnSchema {
+	return &gpb.ColumnSchema{
+		ColumnName:   f.Name,
+		SemanticType: f.SemanticType,
+		Datatype:     f.Datatype,
+	}
+}
+
 func newField(columnName string, semanticType gpb.SemanticType, datatype gpb.ColumnDataType) *Field {
 	field := Field{Name: columnName, SemanticType: semanticType, Datatype: datatype}
 	return &field
+}
+
+func newColumnSchema(columnName string, semanticType gpb.SemanticType, datatype gpb.ColumnDataType) *gpb.ColumnSchema {
+	field := Field{Name: columnName, SemanticType: semanticType, Datatype: datatype}
+	return field.ToColumnSchema()
 }
 
 func parseField(structField reflect.StructField) (*Field, error) {
@@ -176,6 +189,7 @@ func parseIntOrTimeValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value,
 }
 
 func parseValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
+	val = reflect.Indirect(val)
 	switch typ {
 
 	case gpb.ColumnDataType_INT8, gpb.ColumnDataType_INT16, gpb.ColumnDataType_INT32, gpb.ColumnDataType_INT64:

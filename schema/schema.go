@@ -21,14 +21,15 @@ import (
 
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
 type Schema struct {
-	TableName string
-	Fields    []*Field
+	tableName string
 
-	Values []gpb.Row
+	fields []*gpb.ColumnSchema
+	values []*gpb.Row
 }
 
 type Tabler interface {
@@ -47,6 +48,19 @@ func getTableName(typ reflect.Type) (string, error) {
 	}
 
 	return tableName, nil
+}
+
+func Parse(input any) (*table.Table, error) {
+	schema_, err := parseSchema(input)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := schema_.parseValues(input); err != nil {
+		return nil, err
+	}
+
+	return schema_.ToTable()
 }
 
 func indirectStruct(input any) (reflect.Type, error) {
@@ -90,7 +104,7 @@ func parseSchema(input any) (*Schema, error) {
 	}
 
 	size := len(reflect.VisibleFields(typ))
-	fields := make([]*Field, 0, size)
+	fields := make([]*gpb.ColumnSchema, 0, size)
 	for _, structField := range reflect.VisibleFields(typ) {
 		if !structField.IsExported() {
 			continue
@@ -100,10 +114,10 @@ func parseSchema(input any) (*Schema, error) {
 		if err != nil {
 			return nil, err
 		}
-		fields = append(fields, field)
+		fields = append(fields, field.ToColumnSchema())
 	}
 
-	return &Schema{TableName: tableName, Fields: fields}, nil
+	return &Schema{tableName: tableName, fields: fields}, nil
 }
 
 func (s *Schema) parseValues(input any) error {
@@ -115,12 +129,13 @@ func (s *Schema) parseValues(input any) error {
 	val = reflect.Indirect(val)
 	typ := val.Type()
 
-	for typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array {
+	if typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array {
 		for i := 0; i < val.Len(); i++ {
 			if err := s.parseValues(val.Index(i).Interface()); err != nil {
 				return err
 			}
 		}
+		return nil
 	}
 
 	if typ.Kind() != reflect.Struct {
@@ -134,7 +149,7 @@ func (s *Schema) parseValues(input any) error {
 			continue
 		}
 
-		field := s.Fields[i]
+		field := s.fields[i]
 
 		value, err := parseValue(field.Datatype, val.FieldByName(structField.Name))
 		if err != nil {
@@ -143,9 +158,20 @@ func (s *Schema) parseValues(input any) error {
 		values = append(values, value)
 	}
 
-	if s.Values == nil {
-		s.Values = make([]gpb.Row, 0)
+	if s.values == nil {
+		s.values = make([]*gpb.Row, 0)
 	}
-	s.Values = append(s.Values, gpb.Row{Values: values})
+	s.values = append(s.values, &gpb.Row{Values: values})
 	return nil
+}
+
+func (s *Schema) ToTable() (*table.Table, error) {
+	table_, err := table.New(s.tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	table_.WithColumnsSchema(s.fields)
+	table_.WithRows(&gpb.Rows{Rows: s.values})
+	return table_, nil
 }
