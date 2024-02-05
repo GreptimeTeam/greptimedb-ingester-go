@@ -74,7 +74,7 @@ func indirectStruct(input any) (reflect.Type, error) {
 	return typ, nil
 }
 
-func ParseSchema(input any) (*Schema, error) {
+func parseSchema(input any) (*Schema, error) {
 	if input == nil {
 		return nil, fmt.Errorf("unsupported data type: %+v", input)
 	}

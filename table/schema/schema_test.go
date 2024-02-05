@@ -102,20 +102,20 @@ func TestParseSchemaWithoutTags(t *testing.T) {
 		privateField string // will be ignored
 	}
 
-	schema, err := ParseSchema(Monitor{privateField: "private"})
+	schema, err := parseSchema(Monitor{privateField: "private"})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
-	schema, err = ParseSchema(&Monitor{privateField: "private"})
+	schema, err = parseSchema(&Monitor{privateField: "private"})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
-	schema, err = ParseSchema([]Monitor{{privateField: "private"}})
+	schema, err = parseSchema([]Monitor{{privateField: "private"}})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
 	var monitor *Monitor
-	schema, err = ParseSchema(monitor)
+	schema, err = parseSchema(monitor)
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 }
@@ -220,20 +220,20 @@ func TestParseSchemaWithTags(t *testing.T) {
 		privateField string // will be ignored
 	}
 
-	schema, err := ParseSchema(Monitor{privateField: "private"})
+	schema, err := parseSchema(Monitor{privateField: "private"})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
-	schema, err = ParseSchema(&Monitor{privateField: "private"})
+	schema, err = parseSchema(&Monitor{privateField: "private"})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
-	schema, err = ParseSchema([]Monitor{{privateField: "private"}})
+	schema, err = parseSchema([]Monitor{{privateField: "private"}})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
 	var monitor *Monitor
-	schema, err = ParseSchema(monitor)
+	schema, err = parseSchema(monitor)
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 }
@@ -261,20 +261,20 @@ func TestParseTimestampViaIntType(t *testing.T) {
 		TIMESTAMP_NANOSECOND  int64 `greptime:"field;column:timestamp_nanosecond_column;type:timestamp;precision:nanosecond"`
 	}
 
-	schema, err := ParseSchema(Monitor{})
+	schema, err := parseSchema(Monitor{})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
-	schema, err = ParseSchema(&Monitor{})
+	schema, err = parseSchema(&Monitor{})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
-	schema, err = ParseSchema([]Monitor{{}})
+	schema, err = parseSchema([]Monitor{{}})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
 	var monitor *Monitor
-	schema, err = ParseSchema(monitor)
+	schema, err = parseSchema(monitor)
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 }
@@ -296,20 +296,20 @@ func TestParseWithTableName(t *testing.T) {
 		assert.EqualValues(t, newField("int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT32), schema.Fields[0])
 	}
 
-	schema, err := ParseSchema(MonitorWithTableName{})
+	schema, err := parseSchema(MonitorWithTableName{})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
-	schema, err = ParseSchema(&MonitorWithTableName{})
+	schema, err = parseSchema(&MonitorWithTableName{})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
-	schema, err = ParseSchema([]MonitorWithTableName{{}})
+	schema, err = parseSchema([]MonitorWithTableName{{}})
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 
 	var monitor *MonitorWithTableName
-	schema, err = ParseSchema(monitor)
+	schema, err = parseSchema(monitor)
 	assert.Nil(t, err)
 	assertSchema(t, *schema)
 }

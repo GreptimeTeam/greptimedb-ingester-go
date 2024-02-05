@@ -33,8 +33,9 @@ type Field struct {
 	Datatype     gpb.ColumnDataType // default is the value type
 }
 
-func newField(columnName string, semanticType gpb.SemanticType, datatype gpb.ColumnDataType) Field {
-	return Field{Name: columnName, SemanticType: semanticType, Datatype: datatype}
+func newField(columnName string, semanticType gpb.SemanticType, datatype gpb.ColumnDataType) *Field {
+	field := Field{Name: columnName, SemanticType: semanticType, Datatype: datatype}
+	return &field
 }
 
 func parseField(structField reflect.StructField) (*Field, error) {
@@ -67,8 +68,7 @@ func parseField(structField reflect.StructField) (*Field, error) {
 		typ = typ_
 	}
 
-	field := newField(columnName, semanticType, typ)
-	return &field, nil
+	return newField(columnName, semanticType, typ), nil
 }
 
 func parseTag(structField reflect.StructField) map[string]string {
