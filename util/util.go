@@ -15,9 +15,28 @@
 package util
 
 import (
+	"fmt"
 	"strings"
+
+	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
+	"github.com/stoewer/go-strcase"
 )
 
 func IsEmptyString(s string) bool {
 	return len(strings.TrimSpace(s)) == 0
+}
+
+// SanitateName will trim leading and trailing spaces at first,
+// then convert to lower case and convert spaces to underscores.
+func SanitateName(name string) (string, error) {
+	if IsEmptyString(name) {
+		return "", errs.ErrEmptyName
+	}
+
+	s := strings.TrimSpace(name)
+	if len(s) >= 100 {
+		return "", fmt.Errorf("the length of name CAN NOT be longer than 100. %q", s)
+	}
+
+	return strings.ToLower(strcase.SnakeCase(s)), nil
 }

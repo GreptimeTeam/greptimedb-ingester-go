@@ -28,36 +28,43 @@ const (
 )
 
 func BuildBool(v any) (*gpb.Value, error) {
+	var val bool
 	switch t := v.(type) {
 	case bool:
-		return &gpb.Value{ValueData: &gpb.Value_BoolValue{BoolValue: t}}, nil
+		val = t
 	case *bool:
-		return &gpb.Value{ValueData: &gpb.Value_BoolValue{BoolValue: *t}}, nil
+		val = *t
 	default:
 		return nil, fmt.Errorf(formatter+" bool", t, v)
 	}
+
+	return &gpb.Value{ValueData: &gpb.Value_BoolValue{BoolValue: val}}, nil
 }
 
 func BuildString(v any) (*gpb.Value, error) {
+	var val string
 	switch t := v.(type) {
 	case string:
-		return &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: t}}, nil
+		val = t
 	case *string:
-		return &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: *t}}, nil
+		val = *t
 	default:
 		return nil, fmt.Errorf(formatter+" string", t, v)
 	}
+	return &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: val}}, nil
 }
 
 func BuildBytes(v any) (*gpb.Value, error) {
+	var val []byte
 	switch t := v.(type) {
 	case []byte:
-		return &gpb.Value{ValueData: &gpb.Value_BinaryValue{BinaryValue: t}}, nil
+		val = t
 	case *[]byte:
-		return &gpb.Value{ValueData: &gpb.Value_BinaryValue{BinaryValue: *t}}, nil
+		val = *t
 	default:
 		return nil, fmt.Errorf(formatter+" bytes", t, v)
 	}
+	return &gpb.Value{ValueData: &gpb.Value_BinaryValue{BinaryValue: val}}, nil
 }
 
 func getIntPointer(v any) (*int32, *int64, *uint32, *uint64, error) {

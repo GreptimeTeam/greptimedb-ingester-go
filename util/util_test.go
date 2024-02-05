@@ -15,6 +15,7 @@
 package util
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,4 +26,34 @@ func TestEmptyString(t *testing.T) {
 	assert.True(t, IsEmptyString(" "))
 	assert.True(t, IsEmptyString("  "))
 	assert.True(t, IsEmptyString("\t"))
+}
+
+func TestSanitateName(t *testing.T) {
+	key, err := SanitateName("ts ")
+	assert.Nil(t, err)
+	assert.Equal(t, "ts", key)
+
+	key, err = SanitateName(" Ts")
+	assert.Nil(t, err)
+	assert.Equal(t, "ts", key)
+
+	key, err = SanitateName(" TS ")
+	assert.Nil(t, err)
+	assert.Equal(t, "ts", key)
+
+	key, err = SanitateName("DiskUsage ")
+	assert.Nil(t, err)
+	assert.Equal(t, "disk_usage", key)
+
+	key, err = SanitateName("Disk-Usage")
+	assert.Nil(t, err)
+	assert.Equal(t, "disk_usage", key)
+
+	key, err = SanitateName("   ")
+	assert.NotNil(t, err)
+	assert.Equal(t, "", key)
+
+	key, err = SanitateName(strings.Repeat("timestamp", 20))
+	assert.NotNil(t, err)
+	assert.Equal(t, "", key)
 }
