@@ -70,6 +70,44 @@ func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*gpb.Grepti
 	return c.client.Handle(ctx, request_)
 }
 
+// Create is like [Write] to write the data into GreptimeDB, but schema is defined in the struct tag.
+//
+//		type monitor struct {
+//		  ID          int64     `greptime:"tag;column:id;type:int64"`
+//		  Host        string    `greptime:"tag;column:host;type:string"`
+//		  Memory      uint64    `greptime:"field;column:memory;type:uint64"`
+//		  Cpu         float64   `greptime:"field;column:cpu;type:float64"`
+//		  Temperature int64     `greptime:"field;column:temperature;type:int64"`
+//		  Running     bool      `greptime:"field;column:running;type:boolean"`
+//		  Ts          time.Time `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
+//		}
+//
+//		func (monitor) TableName() string {
+//		  return monitorTableName
+//		}
+//
+//		monitors := []monitor{
+//			{
+//			    ID:          randomId(),
+//			    Host:        "127.0.0.1",
+//			    Memory:      1,
+//			    Cpu:         1.0,
+//			    Temperature: -1,
+//			    Ts:          time1,
+//			    Running:     true,
+//			},
+//			{
+//			    ID:          randomId(),
+//			    Host:        "127.0.0.2",
+//			    Memory:      2,
+//			    Cpu:         2.0,
+//			    Temperature: -2,
+//			    Ts:          time2,
+//			    Running:     true,
+//			},
+//	  }
+//
+//		resp, err := client.Create(context.Background(), monitors)
 func (c *Client) Create(ctx context.Context, body any) (*gpb.GreptimeResponse, error) {
 	tbl, err := schema.Parse(body)
 	if err != nil {

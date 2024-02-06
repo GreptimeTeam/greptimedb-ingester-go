@@ -28,10 +28,6 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
-var (
-	streamClient *StreamClient
-)
-
 func newStreamClient() *StreamClient {
 	cfg := config.New(host).
 		WithPort(grpcPort).
@@ -92,6 +88,7 @@ func TestStreamWrite(t *testing.T) {
 		assert.Nil(t, err)
 	}
 
+	streamClient := newStreamClient()
 	err = streamClient.Send(context.Background(), table)
 	assert.Nil(t, err)
 	affected, err := streamClient.CloseAndRecv(context.Background())
@@ -137,7 +134,8 @@ func TestStreamCreate(t *testing.T) {
 		},
 	}
 
-	err = streamClient.Write(context.Background(), monitors)
+	streamClient := newStreamClient()
+	err = streamClient.Create(context.Background(), monitors)
 	assert.Nil(t, err)
 	affected, err := streamClient.CloseAndRecv(context.Background())
 	assert.EqualValues(t, 2, affected.GetValue())

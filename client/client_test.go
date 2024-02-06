@@ -92,13 +92,13 @@ func (datatype) TableName() string {
 }
 
 type monitor struct {
-	ID          int64     `gorm:"primaryKey;column:id"   greptime:"tag;column:id;type=int64"`
-	Host        string    `gorm:"primaryKey;column:host" greptime:"tag;column=host;type=string"`
-	Memory      uint64    `gorm:"column:memory"          greptime:"field;column=memory;type=uint64"`
-	Cpu         float64   `gorm:"column:cpu"             greptime:"field;column=cpu;type=float64"`
-	Temperature int64     `gorm:"column:temperature"     greptime:"field;column=temperature;type=int64"`
-	Running     bool      `gorm:"column:running"         greptime:"field;column=running;type=boolean"`
-	Ts          time.Time `gorm:"column:ts"              greptime:"timestamp;column=ts;type=timestamp;precision=millisecond"`
+	ID          int64     `gorm:"primaryKey;column:id"   greptime:"tag;column:id;type:int64"`
+	Host        string    `gorm:"primaryKey;column:host" greptime:"tag;column:host;type:string"`
+	Memory      uint64    `gorm:"column:memory"          greptime:"field;column:memory;type:uint64"`
+	Cpu         float64   `gorm:"column:cpu"             greptime:"field;column:cpu;type:float64"`
+	Temperature int64     `gorm:"column:temperature"     greptime:"field;column:temperature;type:int64"`
+	Running     bool      `gorm:"column:running"         greptime:"field;column:running;type:boolean"`
+	Ts          time.Time `gorm:"column:ts"              greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
 }
 
 func (monitor) TableName() string {
@@ -244,7 +244,6 @@ func init() {
 
 	cli = newClient()
 	db = newMysql()
-	streamClient = newStreamClient()
 }
 
 func TestWriteMonitors(t *testing.T) {
