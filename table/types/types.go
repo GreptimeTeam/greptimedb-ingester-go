@@ -204,7 +204,7 @@ func ParseColumnType(type_, precision string) (gpb.ColumnDataType, error) {
 
 func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 	switch type_ {
-	case BOOLEAN:
+	case BOOLEAN, BOOL:
 		return gpb.ColumnDataType_BOOLEAN, nil
 	case INT8:
 		return gpb.ColumnDataType_INT8, nil
@@ -224,9 +224,9 @@ func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_UINT64, nil
 	case FLOAT32:
 		return gpb.ColumnDataType_FLOAT32, nil
-	case FLOAT64:
+	case FLOAT64, FLOAT:
 		return gpb.ColumnDataType_FLOAT64, nil
-	case BINARY:
+	case BINARY, BYTES:
 		return gpb.ColumnDataType_BINARY, nil
 	case STRING:
 		return gpb.ColumnDataType_STRING, nil

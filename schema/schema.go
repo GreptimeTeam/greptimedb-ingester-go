@@ -51,6 +51,10 @@ func getTableName(typ reflect.Type) (string, error) {
 }
 
 func Parse(input any) (*table.Table, error) {
+	if input == nil {
+		return nil, fmt.Errorf("unsupported empty data. %#v", input)
+	}
+
 	schema_, err := parseSchema(input)
 	if err != nil {
 		return nil, err
@@ -89,10 +93,6 @@ func indirectStruct(input any) (reflect.Type, error) {
 }
 
 func parseSchema(input any) (*Schema, error) {
-	if input == nil {
-		return nil, fmt.Errorf("unsupported data type: %+v", input)
-	}
-
 	typ, err := indirectStruct(input)
 	if err != nil {
 		return nil, err
