@@ -54,6 +54,8 @@ type ColumnType int
 // DO NOT CHANGE THE ORDER OF THESE CONSTANTS
 // THEY WILL KEEP EXACTLY THE SAME ORDER WITH PROTOCOL BUFFER
 // https://github.com/GreptimeTeam/greptime-proto/blob/main/proto/greptime/v1/common.proto#L78-L110
+//
+// ColumnType has richer types than ColumnDataType in protocol buffer
 const (
 	BOOLEAN               ColumnType = 0
 	INT8                  ColumnType = 1
@@ -90,11 +92,16 @@ const (
 	// the following types are not from protocol buffer
 	INT       ColumnType = 101
 	UINT      ColumnType = 102
-	TIMESTAMP ColumnType = 103
+	FLOAT     ColumnType = 103
+	TIMESTAMP ColumnType = 104
+	BYTES     ColumnType = 105 // eq BINARY
+	BOOL      ColumnType = 106 // eq BOOLEAN
 )
 
 func (type_ ColumnType) String() string {
 	switch type_ {
+	case BOOL:
+		return "BOOL"
 	case BOOLEAN:
 		return "BOOLEAN"
 	case INT8:
@@ -121,8 +128,12 @@ func (type_ ColumnType) String() string {
 		return "FLOAT32"
 	case FLOAT64:
 		return "FLOAT64"
+	case FLOAT:
+		return "FLOAT"
 	case BINARY:
 		return "BINARY"
+	case BYTES:
+		return "BYTES"
 	case STRING:
 		return "STRING"
 	case DATE:
@@ -146,7 +157,7 @@ func (type_ ColumnType) String() string {
 
 func ParseColumnType(type_, precision string) (gpb.ColumnDataType, error) {
 	switch strings.ToUpper(type_) {
-	case BOOLEAN.String():
+	case BOOLEAN.String(), BOOL.String():
 		return gpb.ColumnDataType_BOOLEAN, nil
 	case INT8.String():
 		return gpb.ColumnDataType_INT8, nil
@@ -166,9 +177,9 @@ func ParseColumnType(type_, precision string) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_UINT64, nil
 	case FLOAT32.String():
 		return gpb.ColumnDataType_FLOAT32, nil
-	case FLOAT64.String():
+	case FLOAT64.String(), FLOAT.String():
 		return gpb.ColumnDataType_FLOAT64, nil
-	case BINARY.String():
+	case BINARY.String(), BYTES.String():
 		return gpb.ColumnDataType_BINARY, nil
 	case STRING.String():
 		return gpb.ColumnDataType_STRING, nil

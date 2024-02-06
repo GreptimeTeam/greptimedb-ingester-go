@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -683,5 +684,282 @@ func TestParseWithValues(t *testing.T) {
 			assertValue(row)
 		}
 	}
+}
 
+func TestParseWithNilValues(t *testing.T) {
+	type Monitor struct {
+		PtrINT                       *int       `greptime:"field;column:ptr_int_column;type:int"`
+		PtrINT8                      *int8      `greptime:"field;column:ptr_int8_column;type:int8"`
+		PtrINT16                     *int16     `greptime:"field;column:ptr_int16_column;type:int16"`
+		PtrINT32                     *int32     `greptime:"field;column:ptr_int32_column;type:int32"`
+		PtrINT64                     *int64     `greptime:"field;column:ptr_int64_column;type:int64"`
+		PtrUINT                      *uint      `greptime:"field;column:ptr_uint_column;type:uint"`
+		PtrUINT8                     *uint8     `greptime:"field;column:ptr_uint8_column;type:uint8"`
+		PtrUINT16                    *uint16    `greptime:"field;column:ptr_uint16_column;type:uint16"`
+		PtrUINT32                    *uint32    `greptime:"field;column:ptr_uint32_column;type:uint32"`
+		PtrUINT64                    *uint64    `greptime:"field;column:ptr_uint64_column;type:uint64"`
+		PtrFLOAT32                   *float32   `greptime:"field;column:ptr_float32_column;type:float32"`
+		PtrFLOAT64                   *float64   `greptime:"field;column:ptr_float64_column;type:float64"`
+		PtrBOOLEAN                   *bool      `greptime:"field;column:ptr_boolean_column;type:boolean"`
+		PtrBINARY                    *[]byte    `greptime:"field;column:ptr_binary_column;type:binary"`
+		PtrSTRING                    *string    `greptime:"field;column:ptr_string_column;type:string"`
+		PtrDATE                      *time.Time `greptime:"field;column:ptr_date_column;type:date"`
+		PtrDATETIME                  *time.Time `greptime:"field;column:ptr_datetime_column;type:datetime"`
+		PtrTIMESTAMP_SECOND          *time.Time `greptime:"field;column:ptr_timestamp_second_column;type:timestamp;precision:second"`
+		PtrTIMESTAMP_MILLISECOND     *time.Time `greptime:"field;column:ptr_timestamp_millisecond_column;type:timestamp;precision:millisecond"`
+		PtrTIMESTAMP_MICROSECOND     *time.Time `greptime:"field;column:ptr_timestamp_microsecond_column;type:timestamp;precision:microsecond"`
+		PtrTIMESTAMP_NANOSECOND      *time.Time `greptime:"field;column:ptr_timestamp_nanosecond_column;type:timestamp;precision:nanosecond"`
+		PtrDATE_INT                  *int64     `greptime:"field;column:ptr_date_int_column;type:date"`
+		PtrDATETIME_INT              *int64     `greptime:"field;column:ptr_datetime_int_column;type:datetime"`
+		PtrTIMESTAMP_SECOND_INT      *int64     `greptime:"field;column:ptr_timestamp_second_int_column;type:timestamp;precision:second"`
+		PtrTIMESTAMP_MILLISECOND_INT *int64     `greptime:"field;column:ptr_timestamp_millisecond_int_column;type:timestamp;precision:millisecond"`
+		PtrTIMESTAMP_MICROSECOND_INT *int64     `greptime:"field;column:ptr_timestamp_microsecond_int_column;type:timestamp;precision:microsecond"`
+		PtrTIMESTAMP_NANOSECOND_INT  *int64     `greptime:"field;column:ptr_timestamp_nanosecond_int_column;type:timestamp;precision:nanosecond"`
+	}
+
+	monitor := Monitor{
+		PtrINT:                       nil,
+		PtrINT8:                      nil,
+		PtrINT16:                     nil,
+		PtrINT32:                     nil,
+		PtrINT64:                     nil,
+		PtrUINT:                      nil,
+		PtrUINT8:                     nil,
+		PtrUINT16:                    nil,
+		PtrUINT32:                    nil,
+		PtrUINT64:                    nil,
+		PtrFLOAT32:                   nil,
+		PtrFLOAT64:                   nil,
+		PtrBOOLEAN:                   nil,
+		PtrBINARY:                    nil,
+		PtrSTRING:                    nil,
+		PtrDATE:                      nil,
+		PtrDATETIME:                  nil,
+		PtrTIMESTAMP_SECOND:          nil,
+		PtrTIMESTAMP_MILLISECOND:     nil,
+		PtrTIMESTAMP_MICROSECOND:     nil,
+		PtrTIMESTAMP_NANOSECOND:      nil,
+		PtrDATE_INT:                  nil,
+		PtrDATETIME_INT:              nil,
+		PtrTIMESTAMP_SECOND_INT:      nil,
+		PtrTIMESTAMP_MILLISECOND_INT: nil,
+		PtrTIMESTAMP_MICROSECOND_INT: nil,
+		PtrTIMESTAMP_NANOSECOND_INT:  nil,
+	}
+
+	{
+		tbl, err := Parse(monitor)
+		assert.Nil(t, err)
+		assert.NotNil(t, tbl)
+
+		rows := tbl.GetRows()
+		assert.NotNil(t, rows)
+
+		cols := rows.Schema
+		assert.Len(t, cols, 27)
+
+		assert.EqualValues(t, newColumnSchema("ptr_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT64), cols[0])
+		assert.EqualValues(t, newColumnSchema("ptr_int8_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT8), cols[1])
+		assert.EqualValues(t, newColumnSchema("ptr_int16_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT16), cols[2])
+		assert.EqualValues(t, newColumnSchema("ptr_int32_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT32), cols[3])
+		assert.EqualValues(t, newColumnSchema("ptr_int64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT64), cols[4])
+		assert.EqualValues(t, newColumnSchema("ptr_uint_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), cols[5])
+		assert.EqualValues(t, newColumnSchema("ptr_uint8_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT8), cols[6])
+		assert.EqualValues(t, newColumnSchema("ptr_uint16_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT16), cols[7])
+		assert.EqualValues(t, newColumnSchema("ptr_uint32_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT32), cols[8])
+		assert.EqualValues(t, newColumnSchema("ptr_uint64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), cols[9])
+		assert.EqualValues(t, newColumnSchema("ptr_float32_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_FLOAT32), cols[10])
+		assert.EqualValues(t, newColumnSchema("ptr_float64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_FLOAT64), cols[11])
+		assert.EqualValues(t, newColumnSchema("ptr_boolean_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_BOOLEAN), cols[12])
+		assert.EqualValues(t, newColumnSchema("ptr_binary_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_BINARY), cols[13])
+		assert.EqualValues(t, newColumnSchema("ptr_string_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_STRING), cols[14])
+		assert.EqualValues(t, newColumnSchema("ptr_date_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATE), cols[15])
+		assert.EqualValues(t, newColumnSchema("ptr_datetime_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATETIME), cols[16])
+		assert.EqualValues(t, newColumnSchema("ptr_timestamp_second_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_SECOND), cols[17])
+		assert.EqualValues(t, newColumnSchema("ptr_timestamp_millisecond_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), cols[18])
+		assert.EqualValues(t, newColumnSchema("ptr_timestamp_microsecond_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), cols[19])
+		assert.EqualValues(t, newColumnSchema("ptr_timestamp_nanosecond_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), cols[20])
+		assert.EqualValues(t, newColumnSchema("ptr_date_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATE), cols[21])
+		assert.EqualValues(t, newColumnSchema("ptr_datetime_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATETIME), cols[22])
+		assert.EqualValues(t, newColumnSchema("ptr_timestamp_second_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_SECOND), cols[23])
+		assert.EqualValues(t, newColumnSchema("ptr_timestamp_millisecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), cols[24])
+		assert.EqualValues(t, newColumnSchema("ptr_timestamp_microsecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), cols[25])
+		assert.EqualValues(t, newColumnSchema("ptr_timestamp_nanosecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), cols[26])
+
+		assert.Len(t, rows.Rows, 1)
+		vals := rows.Rows[0].Values
+		assert.Len(t, vals, 27)
+		for _, val := range vals {
+			assert.Nil(t, val)
+		}
+	}
+}
+
+func TestParseWithUnsupportedDatatype(t *testing.T) {
+	{ // field with struct type
+		type T struct{}
+		type Struct struct{ T T }
+
+		tbl, err := Parse(Struct{T: T{}})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported type %q", "struct"))
+		assert.Nil(t, tbl)
+	}
+
+	{ // field with slice but not bytes
+		type Struct struct{ T []int32 }
+
+		tbl, err := Parse(Struct{T: []int32{1, 2, 3}})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported type %q", "slice"))
+		assert.Nil(t, tbl)
+	}
+
+	{ // field with array but not bytes
+		type Struct struct{ T [3]int32 }
+
+		tbl, err := Parse(Struct{T: [3]int32{1, 2, 3}})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported type %q", "array"))
+		assert.Nil(t, tbl)
+	}
+
+	{ // field with map type
+		type Struct struct{ T map[string]string }
+
+		tbl, err := Parse(Struct{T: map[string]string{"a": "b"}})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported type %q", "map"))
+		assert.Nil(t, tbl)
+	}
+
+	{ // field with channel type
+		type Struct struct{ T chan int }
+
+		tbl, err := Parse(Struct{T: make(chan int)})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported type %q", "chan"))
+		assert.Nil(t, tbl)
+	}
+
+	{ // field with func type
+		type Struct struct{ T func() }
+
+		tbl, err := Parse(Struct{T: func() {}})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported type %q", "func"))
+		assert.Nil(t, tbl)
+	}
+}
+
+func TestParseWithUnsupportedDatatypeInTag(t *testing.T) {
+	{
+		type Struct struct {
+			T int32 `greptime:"field;column:int_column;type:slice"`
+		}
+
+		tbl, err := Parse(Struct{T: 1})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported column type %q", "slice"))
+		assert.Nil(t, tbl)
+	}
+
+	{ // field with array but not bytes
+		type Struct struct {
+			T int32 `greptime:"field;column:int_column;type:array"`
+		}
+
+		tbl, err := Parse(Struct{T: 1})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported column type %q", "array"))
+		assert.Nil(t, tbl)
+	}
+
+	{ // field with map type
+		type Struct struct {
+			T int32 `greptime:"field;column:int_column;type:map"`
+		}
+
+		tbl, err := Parse(Struct{T: 1})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported column type %q", "map"))
+		assert.Nil(t, tbl)
+	}
+
+	{ // field with channel type
+		type Struct struct {
+			T int32 `greptime:"field;column:int_column;type:chan"`
+		}
+
+		tbl, err := Parse(Struct{T: 1})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported column type %q", "chan"))
+		assert.Nil(t, tbl)
+	}
+
+	{ // field with func type
+		type Struct struct {
+			T int32 `greptime:"field;column:int_column;type:func"`
+		}
+
+		tbl, err := Parse(Struct{T: 1})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, fmt.Sprintf("unsupported column type %q", "func"))
+		assert.Nil(t, tbl)
+	}
+}
+
+func TestParseWithUnmatchedDatatype(t *testing.T) {
+	{
+		type Struct struct {
+			T string `greptime:"field;column:int_column;type:int32"`
+		}
+
+		tbl, err := Parse(Struct{T: "string"})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, "is not compatible with Int")
+		assert.Nil(t, tbl)
+	}
+	{
+		type Struct struct {
+			T string `greptime:"field;column:int_column;type:float"`
+		}
+
+		tbl, err := Parse(Struct{T: "string"})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, "is not compatible with Float")
+		assert.Nil(t, tbl)
+	}
+	{
+		type Struct struct {
+			T string `greptime:"field;column:int_column;type:uint"`
+		}
+
+		tbl, err := Parse(Struct{T: "string"})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, "is not compatible with Unsigned Int")
+		assert.Nil(t, tbl)
+	}
+
+	{
+		type Struct struct {
+			T string `greptime:"field;column:int_column;type:bool"`
+		}
+
+		tbl, err := Parse(Struct{T: "string"})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, "is not compatible with Bool")
+		assert.Nil(t, tbl)
+	}
+
+	{
+		type Struct struct {
+			T string `greptime:"field;column:int_column;type:bytes"`
+		}
+
+		tbl, err := Parse(Struct{T: "string"})
+		assert.NotNil(t, err)
+		assert.ErrorContains(t, err, "is not compatible with Bytes")
+		assert.Nil(t, tbl)
+	}
 }

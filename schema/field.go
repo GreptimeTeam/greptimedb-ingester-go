@@ -42,13 +42,11 @@ func (f Field) ToColumnSchema() *gpb.ColumnSchema {
 }
 
 func newField(columnName string, semanticType gpb.SemanticType, datatype gpb.ColumnDataType) *Field {
-	field := Field{Name: columnName, SemanticType: semanticType, Datatype: datatype}
-	return &field
+	return &Field{Name: columnName, SemanticType: semanticType, Datatype: datatype}
 }
 
 func newColumnSchema(columnName string, semanticType gpb.SemanticType, datatype gpb.ColumnDataType) *gpb.ColumnSchema {
-	field := Field{Name: columnName, SemanticType: semanticType, Datatype: datatype}
-	return field.ToColumnSchema()
+	return newField(columnName, semanticType, datatype).ToColumnSchema()
 }
 
 func parseField(structField reflect.StructField) (*Field, error) {
@@ -147,27 +145,17 @@ func parseType(typ reflect.Type) (gpb.ColumnDataType, error) {
 	case reflect.String:
 		return gpb.ColumnDataType_STRING, nil
 	case reflect.Struct:
-		if typ.PkgPath() == "time" && typ.Name() == "Time" {
+		if isTimeType(typ) {
 			return gpb.ColumnDataType_TIMESTAMP_MILLISECOND, nil
 		} else {
 			return -1, fmt.Errorf("unsupported type %q", kind.String())
 		}
-
 	default:
 		return -1, fmt.Errorf("unsupported type %q", kind.String())
 	}
 }
 
-func parseTimeValue(val reflect.Value) (*time.Time, error) {
-	method := val.MethodByName("UnixNano")
-	if !method.IsValid() {
-		return nil, fmt.Errorf("type %T of %#v does not have UnixNano method", val, val)
-	}
-	results := method.Call([]reflect.Value{})
-	t := time.Unix(0, results[0].Int())
-	return &t, nil
-}
-
+// parseIntOrTimeValue assumes val is a time.Time type or a integer type or a unsigned integer type
 func parseIntOrTimeValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
 	if val.CanInt() {
 		return cell.New(val.Int(), typ).Build()
@@ -177,12 +165,14 @@ func parseIntOrTimeValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value,
 		return cell.New(val.Uint(), typ).Build()
 	}
 
-	if val.Type().PkgPath() == "time" && val.Type().Name() == "Time" {
-		t, err := parseTimeValue(val)
-		if err != nil {
-			return nil, err
+	if isTimeType(val.Type()) {
+		method := val.MethodByName("UnixNano")
+		if !method.IsValid() {
+			return nil, fmt.Errorf("type %T of %#v does not have UnixNano method", val, val)
 		}
-		return cell.New(*t, typ).Build()
+		results := method.Call([]reflect.Value{})
+		t := time.Unix(0, results[0].Int())
+		return cell.New(t, typ).Build()
 	}
 
 	return nil, fmt.Errorf("unsupported type %T of %#v", val, val)
@@ -190,24 +180,47 @@ func parseIntOrTimeValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value,
 
 func parseValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
 	val = reflect.Indirect(val)
-	switch typ {
+	if !val.IsValid() || val.IsZero() {
+		return nil, nil
+	}
 
+	switch typ {
 	case gpb.ColumnDataType_INT8, gpb.ColumnDataType_INT16, gpb.ColumnDataType_INT32, gpb.ColumnDataType_INT64:
+		if !val.CanInt() {
+			return nil, fmt.Errorf("%#v is not compatible with Int", val)
+		}
 		return cell.New(val.Int(), typ).Build()
 
 	case gpb.ColumnDataType_UINT8, gpb.ColumnDataType_UINT16, gpb.ColumnDataType_UINT32, gpb.ColumnDataType_UINT64:
+		if !val.CanUint() {
+			return nil, fmt.Errorf("%#v is not compatible with Unsigned Int", val)
+		}
 		return cell.New(val.Uint(), typ).Build()
 
 	case gpb.ColumnDataType_FLOAT32, gpb.ColumnDataType_FLOAT64:
+		if !val.CanFloat() {
+			return nil, fmt.Errorf("%#v is not compatible with Float", val)
+		}
 		return cell.New(val.Float(), typ).Build()
 
 	case gpb.ColumnDataType_BOOLEAN:
+		if val.Kind() != reflect.Bool {
+			return nil, fmt.Errorf("%#v is not compatible with Bool", val)
+		}
 		return cell.New(val.Bool(), typ).Build()
 
 	case gpb.ColumnDataType_BINARY:
+		if val.Kind() != reflect.Slice ||
+			val.Kind() != reflect.Array ||
+			val.Type().Elem().Kind() != reflect.Uint8 {
+			return nil, fmt.Errorf("%#v is not compatible with Bytes", val)
+		}
 		return cell.New(val.Bytes(), typ).Build()
 
 	case gpb.ColumnDataType_STRING:
+		if val.Kind() != reflect.String {
+			return nil, fmt.Errorf("%#v is not compatible with String", val)
+		}
 		return cell.New(val.String(), typ).Build()
 
 	case gpb.ColumnDataType_DATE:
@@ -251,4 +264,8 @@ func parseValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
 		return nil, fmt.Errorf("unknown column data type: %v", typ)
 
 	}
+}
+
+func isTimeType(typ reflect.Type) bool {
+	return typ.PkgPath() == "time" && typ.Name() == "Time"
 }
