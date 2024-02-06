@@ -50,19 +50,19 @@ func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
 
 // Send is to send the data into GreptimeDB via explicit schema.
 //
-//	    tbl := table.New(<tableName>)
+//	tbl := table.New(<tableName>)
 //
-//		// add column at first. This is to define the schema of the table.
-//		tbl.AddTagColumn("tag1", types.INT64)
-//		tbl.AddFieldColumn("field1", types.STRING)
-//		tbl.AddFieldColumn("field2", types.DOUBLE)
-//		tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECONDS)
+//	// add column at first. This is to define the schema of the table.
+//	tbl.AddTagColumn("tag1", types.INT64)
+//	tbl.AddFieldColumn("field1", types.STRING)
+//	tbl.AddFieldColumn("field2", types.DOUBLE)
+//	tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECONDS)
 //
-//		// you can add multiple row(s). This is the real data.
-//		tbl.AddRow(1, "hello", 1.1, time.Now())
+//	// you can add multiple row(s). This is the real data.
+//	tbl.AddRow(1, "hello", 1.1, time.Now())
 //
-//		// send data into GreptimeDB
-//		resp, err := streamClient.Send(context.Background(), tbl)
+//	// send data into GreptimeDB
+//	resp, err := streamClient.Send(context.Background(), tbl)
 func (c *StreamClient) Send(ctx context.Context, tables ...*table.Table) error {
 	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
 	request_, err := request.New(header_, tables...).Build()
@@ -74,42 +74,42 @@ func (c *StreamClient) Send(ctx context.Context, tables ...*table.Table) error {
 
 // Create is like [Send] to send the data into GreptimeDB, but schema is defined in the struct tag.
 //
-//		type monitor struct {
-//		  ID          int64     `greptime:"tag;column:id;type:int64"`
-//		  Host        string    `greptime:"tag;column:host;type:string"`
-//		  Memory      uint64    `greptime:"field;column:memory;type:uint64"`
-//		  Cpu         float64   `greptime:"field;column:cpu;type:float64"`
-//		  Temperature int64     `greptime:"field;column:temperature;type:int64"`
-//		  Running     bool      `greptime:"field;column:running;type:boolean"`
-//		  Ts          time.Time `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
-//		}
+//	type monitor struct {
+//	  ID          int64     `greptime:"tag;column:id;type:int64"`
+//	  Host        string    `greptime:"tag;column:host;type:string"`
+//	  Memory      uint64    `greptime:"field;column:memory;type:uint64"`
+//	  Cpu         float64   `greptime:"field;column:cpu;type:float64"`
+//	  Temperature int64     `greptime:"field;column:temperature;type:int64"`
+//	  Running     bool      `greptime:"field;column:running;type:boolean"`
+//	  Ts          time.Time `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
+//	}
 //
-//		func (monitor) TableName() string {
-//		  return monitorTableName
-//		}
+//	func (monitor) TableName() string {
+//	  return monitorTableName
+//	}
 //
-//		monitors := []monitor{
-//			{
-//			    ID:          randomId(),
-//			    Host:        "127.0.0.1",
-//			    Memory:      1,
-//			    Cpu:         1.0,
-//			    Temperature: -1,
-//			    Ts:          time1,
-//			    Running:     true,
-//			},
-//			{
-//			    ID:          randomId(),
-//			    Host:        "127.0.0.2",
-//			    Memory:      2,
-//			    Cpu:         2.0,
-//			    Temperature: -2,
-//			    Ts:          time2,
-//			    Running:     true,
-//			},
-//	  }
+//	monitors := []monitor{
+//		{
+//		    ID:          randomId(),
+//		    Host:        "127.0.0.1",
+//		    Memory:      1,
+//		    Cpu:         1.0,
+//		    Temperature: -1,
+//		    Ts:          time1,
+//		    Running:     true,
+//		},
+//		{
+//		    ID:          randomId(),
+//		    Host:        "127.0.0.2",
+//		    Memory:      2,
+//		    Cpu:         2.0,
+//		    Temperature: -2,
+//		    Ts:          time2,
+//		    Running:     true,
+//		},
+//	}
 //
-//		resp, err := streamClient.Create(context.Background(), monitors)
+//	resp, err := streamClient.Create(context.Background(), monitors)
 func (c *StreamClient) Create(ctx context.Context, body any) error {
 	tbl, err := schema.Parse(body)
 	if err != nil {
