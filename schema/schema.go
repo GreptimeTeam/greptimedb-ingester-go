@@ -170,8 +170,5 @@ func (s *Schema) ToTable() (*table.Table, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	table_.WithColumnsSchema(s.fields)
-	table_.WithRows(&gpb.Rows{Rows: s.values})
-	return table_, nil
+	return table_.WithColumnsSchema(s.fields).WithRows(&gpb.Rows{Rows: s.values}), nil
 }
