@@ -40,55 +40,146 @@ func TestParseSpecialTypeTag(t *testing.T) {
 		T3 time.Time `greptime:"type:timestamp;precision:microsecond"`
 		T4 time.Time `greptime:"type:timestamp;precision:nanosecond"`
 
-		B1 []byte `greptime:"type=timestamp,precision=bytes"`
-		B2 []byte `greptime:"type=timestamp,precision=binary"`
+		// the following are the same
+
+		BS1 []byte `greptime:"type:bytes"`
+		BS2 []byte `greptime:"type:binary"`
+
+		B1 bool `greptime:"type:bool"`
+		B2 bool `greptime:"type:boolean"`
+
+		F1 float64 `greptime:"type:float"`
+		F2 float64 `greptime:"type:float64"`
+
+		I1 int64 `greptime:"type:int"`
+		I2 int64 `greptime:"type:int64"`
+
+		U1 uint64 `greptime:"type:uint"`
+		U2 uint64 `greptime:"type:uint64"`
 	}
 
-	{
-		t1, ok := reflect.TypeOf(Struct{}).FieldByName("T1")
-		assert.True(t, ok)
-		field, err := parseField(t1)
-		assert.Nil(t, err)
-		assert.EqualValues(t, newField("t1", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_SECOND), field)
+	{ // timestamp
+		{
+			t1, ok := reflect.TypeOf(Struct{}).FieldByName("T1")
+			assert.True(t, ok)
+			field, err := parseField(t1)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("t1", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_SECOND), field)
+		}
+
+		{
+			t2, ok := reflect.TypeOf(Struct{}).FieldByName("T2")
+			assert.True(t, ok)
+			field, err := parseField(t2)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("t2", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), field)
+		}
+
+		{
+			t3, ok := reflect.TypeOf(Struct{}).FieldByName("T3")
+			assert.True(t, ok)
+			field, err := parseField(t3)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("t3", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), field)
+		}
+
+		{
+			t4, ok := reflect.TypeOf(Struct{}).FieldByName("T4")
+			assert.True(t, ok)
+			field, err := parseField(t4)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("t4", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), field)
+		}
+
 	}
 
-	{
-		t2, ok := reflect.TypeOf(Struct{}).FieldByName("T2")
-		assert.True(t, ok)
-		field, err := parseField(t2)
-		assert.Nil(t, err)
-		assert.EqualValues(t, newField("t2", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), field)
+	{ // bytes
+		{
+			bs1, ok := reflect.TypeOf(Struct{}).FieldByName("BS1")
+			assert.True(t, ok)
+			field, err := parseField(bs1)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("bs1", gpb.SemanticType_FIELD, gpb.ColumnDataType_BINARY), field)
+		}
+
+		{
+			bs2, ok := reflect.TypeOf(Struct{}).FieldByName("BS2")
+			assert.True(t, ok)
+			field, err := parseField(bs2)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("bs2", gpb.SemanticType_FIELD, gpb.ColumnDataType_BINARY), field)
+		}
 	}
 
-	{
-		t3, ok := reflect.TypeOf(Struct{}).FieldByName("T3")
-		assert.True(t, ok)
-		field, err := parseField(t3)
-		assert.Nil(t, err)
-		assert.EqualValues(t, newField("t3", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), field)
+	{ // bool
+		{
+			b1, ok := reflect.TypeOf(Struct{}).FieldByName("B1")
+			assert.True(t, ok)
+			field, err := parseField(b1)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("b1", gpb.SemanticType_FIELD, gpb.ColumnDataType_BOOLEAN), field)
+		}
+
+		{
+			b2, ok := reflect.TypeOf(Struct{}).FieldByName("B2")
+			assert.True(t, ok)
+			field, err := parseField(b2)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("b2", gpb.SemanticType_FIELD, gpb.ColumnDataType_BOOLEAN), field)
+		}
 	}
 
-	{
-		t4, ok := reflect.TypeOf(Struct{}).FieldByName("T4")
-		assert.True(t, ok)
-		field, err := parseField(t4)
-		assert.Nil(t, err)
-		assert.EqualValues(t, newField("t4", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), field)
+	{ // float
+		{
+			f1, ok := reflect.TypeOf(Struct{}).FieldByName("F1")
+			assert.True(t, ok)
+			field, err := parseField(f1)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("f1", gpb.SemanticType_FIELD, gpb.ColumnDataType_FLOAT64), field)
+		}
+
+		{
+			f2, ok := reflect.TypeOf(Struct{}).FieldByName("F2")
+			assert.True(t, ok)
+			field, err := parseField(f2)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("f2", gpb.SemanticType_FIELD, gpb.ColumnDataType_FLOAT64), field)
+		}
 	}
 
-	{
-		b1, ok := reflect.TypeOf(Struct{}).FieldByName("B1")
-		assert.True(t, ok)
-		field, err := parseField(b1)
-		assert.Nil(t, err)
-		assert.EqualValues(t, newField("b1", gpb.SemanticType_FIELD, gpb.ColumnDataType_BINARY), field)
+	{ // int
+		{
+			I1, ok := reflect.TypeOf(Struct{}).FieldByName("I1")
+			assert.True(t, ok)
+			field, err := parseField(I1)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("i1", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT64), field)
+		}
+
+		{
+			i2, ok := reflect.TypeOf(Struct{}).FieldByName("I2")
+			assert.True(t, ok)
+			field, err := parseField(i2)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("i2", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT64), field)
+		}
 	}
 
-	{
-		b2, ok := reflect.TypeOf(Struct{}).FieldByName("B2")
-		assert.True(t, ok)
-		field, err := parseField(b2)
-		assert.Nil(t, err)
-		assert.EqualValues(t, newField("b2", gpb.SemanticType_FIELD, gpb.ColumnDataType_BINARY), field)
+	{ // uint
+		{
+			U1, ok := reflect.TypeOf(Struct{}).FieldByName("U1")
+			assert.True(t, ok)
+			field, err := parseField(U1)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("u1", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), field)
+		}
+
+		{
+			u2, ok := reflect.TypeOf(Struct{}).FieldByName("U2")
+			assert.True(t, ok)
+			field, err := parseField(u2)
+			assert.Nil(t, err)
+			assert.EqualValues(t, newField("u2", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), field)
+		}
 	}
 }

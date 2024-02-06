@@ -210,8 +210,7 @@ func parseValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
 		return cell.New(val.Bool(), typ).Build()
 
 	case gpb.ColumnDataType_BINARY:
-		if val.Kind() != reflect.Slice ||
-			val.Kind() != reflect.Array ||
+		if (val.Kind() != reflect.Slice && val.Kind() != reflect.Array) ||
 			val.Type().Elem().Kind() != reflect.Uint8 {
 			return nil, fmt.Errorf("%#v is not compatible with Bytes", val)
 		}
