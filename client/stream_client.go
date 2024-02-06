@@ -50,13 +50,13 @@ func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
 
 // Send is to send the data into GreptimeDB via explicit schema.
 //
-//	tbl := table.New(<tableName>)
+//	tbl, err := table.New(<tableName>)
 //
 //	// add column at first. This is to define the schema of the table.
 //	tbl.AddTagColumn("tag1", types.INT64)
 //	tbl.AddFieldColumn("field1", types.STRING)
-//	tbl.AddFieldColumn("field2", types.DOUBLE)
-//	tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECONDS)
+//	tbl.AddFieldColumn("field2", types.FLOAT64)
+//	tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECOND)
 //
 //	// you can add multiple row(s). This is the real data.
 //	tbl.AddRow(1, "hello", 1.1, time.Now())

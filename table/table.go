@@ -123,16 +123,16 @@ func (t *Table) addRow(row *gpb.Row) error {
 //
 // NOTE: The order of inputs MUST match the order of columns in the schema.
 //
-//		tbl := table.New(<tableName>)
+//	tbl := table.New(<tableName>)
 //
-//		// add column at first. This is to define the schema of the table.
-//		tbl.AddTagColumn("tag1", types.INT64)
-//		tbl.AddFieldColumn("field1", types.STRING)
-//		tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECONDS)
+//	// add column at first. This is to define the schema of the table.
+//	tbl.AddTagColumn("tag1", types.INT64)
+//	tbl.AddFieldColumn("field1", types.STRING)
+//	tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECONDS)
 //
-//		// you can add multiple row(s). This is the real data.
-//		tbl.AddRow(1, "hello", time.Now())
-//	    tbl.AddRow(2, "world", time.Now())
+//	// you can add multiple row(s). This is the real data.
+//	tbl.AddRow(1, "hello", time.Now())
+//	tbl.AddRow(2, "world", time.Now())
 func (t *Table) AddRow(inputs ...any) error {
 	if t.IsColumnEmpty() {
 		return errs.ErrEmptyColumn

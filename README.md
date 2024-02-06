@@ -6,6 +6,22 @@
 
 Provide API to insert data into GreptimeDB.
 
+start GreptimeDB via Docker
+
+```shell
+docker run --rm -p 4000-4003:4000-4003 \
+--name greptime greptime/greptimedb standalone start \
+--http-addr 0.0.0.0:4000 \
+--rpc-addr 0.0.0.0:4001 \
+--mysql-addr 0.0.0.0:4002 \
+--postgres-addr 0.0.0.0:4003
+```
+
+## Basic Example
+
+- [schema](examples/schema/main.go)
+- [tag](examples/tag/main.go)
+
 ## How To Use
 
 ### Installation

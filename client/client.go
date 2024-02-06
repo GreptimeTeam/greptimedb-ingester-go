@@ -48,13 +48,13 @@ func New(cfg *config.Config) (*Client, error) {
 
 // Write is to write the data into GreptimeDB via explicit schema.
 //
-//	tbl := table.New(<tableName>)
+//	tbl, err := table.New(<tableName>)
 //
 //	// add column at first. This is to define the schema of the table.
 //	tbl.AddTagColumn("tag1", types.INT64)
 //	tbl.AddFieldColumn("field1", types.STRING)
-//	tbl.AddFieldColumn("field2", types.DOUBLE)
-//	tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECONDS)
+//	tbl.AddFieldColumn("field2", types.FLOAT64)
+//	tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECOND)
 //
 //	// you can add multiple row(s). This is the real data.
 //	tbl.AddRow(1, "hello", 1.1, time.Now())
@@ -72,7 +72,7 @@ func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*gpb.Grepti
 
 // Create is like [Write] to write the data into GreptimeDB, but schema is defined in the struct tag.
 //
-//	type monitor struct {
+//	type Monitor struct {
 //	  ID          int64     `greptime:"tag;column:id;type:int64"`
 //	  Host        string    `greptime:"tag;column:host;type:string"`
 //	  Memory      uint64    `greptime:"field;column:memory;type:uint64"`
@@ -82,11 +82,11 @@ func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*gpb.Grepti
 //	  Ts          time.Time `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
 //	}
 //
-//	func (monitor) TableName() string {
+//	func (Monitor) TableName() string {
 //	  return monitorTableName
 //	}
 //
-//	monitors := []monitor{
+//	monitors := []Monitor{
 //		{
 //		    ID:          randomId(),
 //		    Host:        "127.0.0.1",
