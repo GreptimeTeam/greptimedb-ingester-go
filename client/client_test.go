@@ -42,7 +42,7 @@ import (
 // timeout test
 
 var (
-	monitorTableName   = "monitor"
+	monitorTableName   = "monitors"
 	datatypesTableName = "datatypes"
 	timezone           = "UTC"
 
@@ -92,13 +92,13 @@ func (datatype) TableName() string {
 }
 
 type monitor struct {
-	ID          int64     `gorm:"primaryKey;column:id"`
-	Host        string    `gorm:"primaryKey;column:host"`
-	Memory      uint64    `gorm:"column:memory"`
-	Cpu         float64   `gorm:"column:cpu"`
-	Temperature int64     `gorm:"column:temperature"`
-	Running     bool      `gorm:"column:running"`
-	Ts          time.Time `gorm:"column:ts"`
+	ID          int64     `gorm:"primaryKey;column:id"   greptime:"tag;column:id;type=int64"`
+	Host        string    `gorm:"primaryKey;column:host" greptime:"tag;column=host;type=string"`
+	Memory      uint64    `gorm:"column:memory"          greptime:"field;column=memory;type=uint64"`
+	Cpu         float64   `gorm:"column:cpu"             greptime:"field;column=cpu;type=float64"`
+	Temperature int64     `gorm:"column:temperature"     greptime:"field;column=temperature;type=int64"`
+	Running     bool      `gorm:"column:running"         greptime:"field;column=running;type=boolean"`
+	Ts          time.Time `gorm:"column:ts"              greptime:"timestamp;column=ts;type=timestamp;precision=millisecond"`
 }
 
 func (monitor) TableName() string {
@@ -247,7 +247,7 @@ func init() {
 	streamClient = newStreamClient()
 }
 
-func TestInsertMonitors(t *testing.T) {
+func TestWriteMonitors(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
@@ -295,6 +295,51 @@ func TestInsertMonitors(t *testing.T) {
 	}
 
 	resp, err := cli.Write(context.Background(), table)
+	assert.Nil(t, err)
+	assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
+	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
+	assert.Equal(t, uint32(len(monitors)), resp.GetAffectedRows().GetValue())
+
+	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in %s order by host asc", monitorTableName, getMonitorsIds(monitors)))
+	assert.Nil(t, err)
+
+	assert.Equal(t, len(monitors), len(monitors_))
+
+	for i, monitor_ := range monitors_ {
+		assert.Equal(t, monitors[i], monitor_)
+	}
+}
+
+func TestCreateMonitors(t *testing.T) {
+	loc, err := time.LoadLocation(timezone)
+	assert.Nil(t, err)
+	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
+	time1 := time.UnixMilli(ts1).In(loc)
+	ts2 := time.Now().Add(-2 * time.Minute).UnixMilli()
+	time2 := time.UnixMilli(ts2).In(loc)
+
+	monitors := []monitor{
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.1",
+			Memory:      1,
+			Cpu:         1.0,
+			Temperature: -1,
+			Ts:          time1,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.2",
+			Memory:      2,
+			Cpu:         2.0,
+			Temperature: -2,
+			Ts:          time2,
+			Running:     true,
+		},
+	}
+
+	resp, err := cli.Create(context.Background(), monitors)
 	assert.Nil(t, err)
 	assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
 	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())

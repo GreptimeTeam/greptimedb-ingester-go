@@ -45,7 +45,7 @@ func newStreamClient() *StreamClient {
 	return client
 }
 
-func TestStreamInsert(t *testing.T) {
+func TestStreamWrite(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
@@ -93,6 +93,51 @@ func TestStreamInsert(t *testing.T) {
 	}
 
 	err = streamClient.Send(context.Background(), table)
+	assert.Nil(t, err)
+	affected, err := streamClient.CloseAndRecv(context.Background())
+	assert.EqualValues(t, 2, affected.GetValue())
+	assert.Nil(t, err)
+
+	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in %s order by host asc", monitorTableName, getMonitorsIds(monitors)))
+	assert.Nil(t, err)
+
+	assert.Equal(t, len(monitors), len(monitors_))
+
+	for i, monitor_ := range monitors_ {
+		assert.Equal(t, monitors[i], monitor_)
+	}
+}
+
+func TestStreamCreate(t *testing.T) {
+	loc, err := time.LoadLocation(timezone)
+	assert.Nil(t, err)
+	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
+	time1 := time.UnixMilli(ts1).In(loc)
+	ts2 := time.Now().Add(-2 * time.Minute).UnixMilli()
+	time2 := time.UnixMilli(ts2).In(loc)
+
+	monitors := []monitor{
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.1",
+			Memory:      1,
+			Cpu:         1.0,
+			Temperature: -1,
+			Ts:          time1,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.2",
+			Memory:      2,
+			Cpu:         2.0,
+			Temperature: -2,
+			Ts:          time2,
+			Running:     true,
+		},
+	}
+
+	err = streamClient.Write(context.Background(), monitors)
 	assert.Nil(t, err)
 	affected, err := streamClient.CloseAndRecv(context.Background())
 	assert.EqualValues(t, 2, affected.GetValue())

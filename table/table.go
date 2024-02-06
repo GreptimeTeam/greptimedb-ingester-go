@@ -66,6 +66,10 @@ func (t *Table) addColumn(name string, semanticType gpb.SemanticType, dataType g
 	return nil
 }
 
+// AddTagColumn helps to add the tag column. You can find details in
+// [Data Model].
+//
+// [Data Model]: https://docs.greptime.com/user-guide/concepts/data-model
 func (t *Table) AddTagColumn(name string, type_ types.ColumnType) error {
 	typ, err := types.ConvertType(type_)
 	if err != nil {
@@ -75,6 +79,10 @@ func (t *Table) AddTagColumn(name string, type_ types.ColumnType) error {
 	return t.addColumn(name, gpb.SemanticType_TAG, typ)
 }
 
+// AddFieldColumn helps to add the field column. You can find details in
+// [Data Model].
+//
+// [Data Model]: https://docs.greptime.com/user-guide/concepts/data-model
 func (t *Table) AddFieldColumn(name string, type_ types.ColumnType) error {
 	typ, err := types.ConvertType(type_)
 	if err != nil {
@@ -84,7 +92,10 @@ func (t *Table) AddFieldColumn(name string, type_ types.ColumnType) error {
 	return t.addColumn(name, gpb.SemanticType_FIELD, typ)
 }
 
-// AddTimestampColumn helps to add the time index column
+// AddTimestampColumn helps to add the timestamp column. A table can only
+// have one timestamp column. You can find details in [Data Model].
+//
+// [Data Model]: https://docs.greptime.com/user-guide/concepts/data-model
 func (t *Table) AddTimestampColumn(name string, type_ types.ColumnType) error {
 	typ, err := types.ConvertType(type_)
 	if err != nil {
@@ -107,7 +118,21 @@ func (t *Table) addRow(row *gpb.Row) error {
 	return nil
 }
 
-// AddRow will check if the input matches the schema
+// AddRow is to add real data based on the schema defined before by
+// AddTagColumn(), AddFieldColumn() or AddTimestampColumn().
+//
+// NOTE: The order of inputs MUST match the order of columns in the schema.
+//
+//		tbl := table.New(<tableName>)
+//
+//		// add column at first. This is to define the schema of the table.
+//		tbl.AddTagColumn("tag1", types.INT64)
+//		tbl.AddFieldColumn("field1", types.STRING)
+//		tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECONDS)
+//
+//		// you can add multiple row(s). This is the real data.
+//		tbl.AddRow(1, "hello", time.Now())
+//	    tbl.AddRow(2, "world", time.Now())
 func (t *Table) AddRow(inputs ...any) error {
 	if t.IsColumnEmpty() {
 		return errs.ErrEmptyColumn

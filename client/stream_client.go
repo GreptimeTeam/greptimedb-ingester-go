@@ -17,12 +17,13 @@ package client
 import (
 	"context"
 
-	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"google.golang.org/grpc"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/schema"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
@@ -30,7 +31,7 @@ import (
 type StreamClient struct {
 	cfg *config.Config
 
-	client greptimepb.GreptimeDatabase_HandleRequestsClient
+	client gpb.GreptimeDatabase_HandleRequestsClient
 }
 
 func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
@@ -39,7 +40,7 @@ func NewStreamClient(cfg *config.Config) (*StreamClient, error) {
 		return nil, err
 	}
 
-	client, err := greptimepb.NewGreptimeDatabaseClient(conn).HandleRequests(context.Background())
+	client, err := gpb.NewGreptimeDatabaseClient(conn).HandleRequests(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +57,15 @@ func (c *StreamClient) Send(ctx context.Context, tables ...*table.Table) error {
 	return c.client.Send(request_)
 }
 
-func (c *StreamClient) CloseAndRecv(ctx context.Context) (*greptimepb.AffectedRows, error) {
+func (c *StreamClient) Write(ctx context.Context, body any) error {
+	tbl, err := schema.Parse(body)
+	if err != nil {
+		return err
+	}
+	return c.Send(ctx, tbl)
+}
+
+func (c *StreamClient) CloseAndRecv(ctx context.Context) (*gpb.AffectedRows, error) {
 	resp, err := c.client.CloseAndRecv()
 	if err != nil {
 		return nil, err

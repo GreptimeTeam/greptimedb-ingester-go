@@ -17,12 +17,13 @@ package client
 import (
 	"context"
 
-	greptimepb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"google.golang.org/grpc"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/schema"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
@@ -31,7 +32,7 @@ import (
 type Client struct {
 	cfg *config.Config
 
-	client greptimepb.GreptimeDatabaseClient
+	client gpb.GreptimeDatabaseClient
 }
 
 // New helps to create the greptimedb client, which will be responsible write data into GreptimeDB.
@@ -41,15 +42,39 @@ func New(cfg *config.Config) (*Client, error) {
 		return nil, err
 	}
 
-	client := greptimepb.NewGreptimeDatabaseClient(conn)
+	client := gpb.NewGreptimeDatabaseClient(conn)
 	return &Client{cfg: cfg, client: client}, nil
 }
 
-func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*greptimepb.GreptimeResponse, error) {
+// Write is to write the data into GreptimeDB via explicit schema.
+//
+//	    tbl := table.New(<tableName>)
+//
+//		// add column at first. This is to define the schema of the table.
+//		tbl.AddTagColumn("tag1", types.INT64)
+//		tbl.AddFieldColumn("field1", types.STRING)
+//		tbl.AddFieldColumn("field2", types.DOUBLE)
+//		tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECONDS)
+//
+//		// you can add multiple row(s). This is the real data.
+//		tbl.AddRow(1, "hello", 1.1, time.Now())
+//
+//		// write data into GreptimeDB
+//		resp, err := client.Write(context.Background(), tbl)
+func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*gpb.GreptimeResponse, error) {
 	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
 	request_, err := request.New(header_, tables...).Build()
 	if err != nil {
 		return nil, err
 	}
 	return c.client.Handle(ctx, request_)
+}
+
+func (c *Client) Create(ctx context.Context, body any) (*gpb.GreptimeResponse, error) {
+	tbl, err := schema.Parse(body)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.Write(ctx, tbl)
 }
