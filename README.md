@@ -6,17 +6,6 @@
 
 Provide API to insert data into GreptimeDB.
 
-start GreptimeDB via Docker
-
-```shell
-docker run --rm -p 4000-4003:4000-4003 \
---name greptime greptime/greptimedb standalone start \
---http-addr 0.0.0.0:4000 \
---rpc-addr 0.0.0.0:4001 \
---mysql-addr 0.0.0.0:4002 \
---postgres-addr 0.0.0.0:4003
-```
-
 ## Basic Example
 
 - [schema](examples/schema/main.go)
@@ -67,46 +56,40 @@ stream, err := client.NewStreamClient(cfg)
 
 #### Insert & StreamInsert
 
-streaming insert is to Send data into GreptimeDB without waiting for response.
+- you can Insert data into GreptimeDB via:
+  - [define schema](#with-schema-predefined)
+  - [define struct](#with-struct-tag)
+- streaming insert is to Send data into GreptimeDB without waiting for response.
 
 ##### Datatypes supported
 
-###### Go
+The **GreptimeDB** column is for the datatypes supported in library, and the **Go** column is the matched Go type.
 
-- int, int8, int16, int32, int64
-- uint, uint8, uint16, uint32, uint64
-- float32, float64
-- bool
-- string
-- []byte, []uint8, [N]byte, [N]uint8
-- time.Time
+| GreptimeDB                       | Go               | Description                            |
+|----------------------------------|------------------|----------------------------------------|
+| INT8                             | int8             |                                        |
+| INT16                            | int16            |                                        |
+| INT32                            | int32            |                                        |
+| INT64, INT                       | int64            |                                        |
+| UINT8                            | uint8            |                                        |
+| UINT16                           | uint16           |                                        |
+| UINT32                           | uint32           |                                        |
+| UINT64, UINT                     | uint64           |                                        |
+| FLOAT32                          | float32          |                                        |
+| FLOAT64, FLOAT                   | float64          |                                        |
+| BOOLEAN, BOOL                    | bool             |                                        |
+| STRING                           | string           |                                        |
+| BINARY, BYTES                    | []byte           |                                        |
+| DATE                             | Int or time.Time | the day elapsed since 1970-1-1         |
+| DATETIME                         | Int or time.Time | the millisecond elapsed since 1970-1-1 |
+| TIMESTAMP_SECOND                 | Int or time.Time |                                        |
+| TIMESTAMP_MILLISECOND, TIMESTAMP | Int or time.Time |                                        |
+| TIMESTAMP_MICROSECOND            | Int or time.Time |                                        |
+| TIMESTAMP_NANOSECOND             | Int or time.Time |                                        |
 
-###### GreptimeDB
+NOTE: Int is for all of Integer and Unsigned Integer in Go
 
-- INT, INT8, INT16, INT32, INT64
-- UINT, UINT8, UINT16, UINT32, UINT64
-- FLOAT, FLOAT32, FLOAT64
-- BOOL, BOOLEAN
-- STRING
-- BINARY, BYTES
-- DATE     // the day elapsed since January 1, 1970.
-- DATETIME // the milliseconds elapsed since January 1, 1970.
-- TIMESTAMP
-- TIMESTAMP_SECOND
-- TIMESTAMP_MILLISECOND
-- TIMESTAMP_MICROSECOND
-- TIMESTAMP_NANOSECOND
-
-NOTE: the following are the same
-
-- INT, INT64
-- UINT, UINT64
-- FLOAT, FLOAT64
-- BOOL, BOOLEAN
-- BINARY, BYTES
-- TIMESTAMP, TIMESTAMP_MILLISECOND
-
-##### With Schema predefined explicitly
+##### With Schema predefined
 
 ###### define table schema, and add rows
 
@@ -134,7 +117,7 @@ resp, err := cli.Write(context.Background(), tbl)
 err := streamClient.Send(context.Background(), tbl)
 ```
 
-##### With Schema defined in struct Tag
+##### With Struct Tag
 
 ###### Tag
 
