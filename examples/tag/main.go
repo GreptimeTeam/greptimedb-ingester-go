@@ -33,13 +33,13 @@ func init() {
 
 	cli_, err := client.New(cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	cli = cli_
 
 	stream_, err := client.NewStreamClient(cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	stream = stream_
 }
@@ -59,7 +59,6 @@ func (Monitor) TableName() string {
 }
 
 func main() {
-
 	monitors := []Monitor{
 		{
 			ID:          1,
@@ -82,17 +81,16 @@ func main() {
 	}
 
 	{ // client write data into GreptimeDB
-		_, err := cli.Create(context.Background(), monitors)
+		resp, err := cli.Create(context.Background(), monitors)
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 	}
 
 	{ // stream client send data into GreptimeDB
-		err := stream.Create(context.Background(), monitors)
-		if err != nil {
+		if err := stream.Create(context.Background(), monitors); err != nil {
 			log.Fatal(err)
 		}
 	}
-
 }
