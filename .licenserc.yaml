@@ -17,6 +17,7 @@ header:
     - '.gitignore'
     - 'LICENSE'
     - '*.md'
+    - 'examples/**/*.md'
     - "*.yml"
     - "*.yaml"
     - 'go.mod'
