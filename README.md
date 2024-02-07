@@ -56,9 +56,10 @@ stream, err := client.NewStreamClient(cfg)
 
 #### Insert & StreamInsert
 
-- you can Insert data into GreptimeDB via:
-  - [define schema](#with-schema-predefined)
-  - [define struct](#with-struct-tag)
+- you can Insert data into GreptimeDB via different style:
+  - [Table/Column/Row style](#with-schema-predefined)
+  - [ORM style](#with-struct-tag)
+
 - streaming insert is to Send data into GreptimeDB without waiting for response.
 
 ##### Datatypes supported
@@ -91,6 +92,8 @@ NOTE: Int is for all of Integer and Unsigned Integer in Go
 
 ##### With Schema predefined
 
+you can define schema via Table and Column, and then AddRow to include the real data you want to write.
+
 ###### define table schema, and add rows
 
 ```go
@@ -119,14 +122,17 @@ err := streamClient.Send(context.Background(), tbl)
 
 ##### With Struct Tag
 
+If you prefer ORM style, and define column-field relationship via struct field tag, you can try the following way.
+
 ###### Tag
 
-- `greptime` is the tag key
-- `tag`, `field`, `timestamp` is for [SemanticType][data-model]
+- `greptime` is the struct tag key
+- `tag`, `field`, `timestamp` is for [SemanticType][data-model], and the value is ignored
 - `column` is to define the column name
 - `type` is to define the data type. if type is timestamp, `precision` is supported
+- the metadata separator is `;`, and the key value separator is `:`
 
-type supported is the same as described [Datatypes supported in GreptimeDB](#greptimedb), and case insensitive.
+type supported is the same as described [Datatypes supported](#datatypes-supported), and case insensitive
 
 ###### define struct with tags
 
@@ -138,8 +144,6 @@ type Monitor struct {
 }
 
 // TableName is to define the table name.
-// if TableName method is not found, the snake style and lower case of struct name
-// will be used as table name. The table name is `monitor` if TableName method not found.
 func (Monitor) TableName() string {
     return "<table_name>"
 }
