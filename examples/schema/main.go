@@ -19,34 +19,26 @@ import (
 	"log"
 	"time"
 
-	"github.com/GreptimeTeam/greptimedb-ingester-go/client"
-	"github.com/GreptimeTeam/greptimedb-ingester-go/config"
+	greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
 var (
-	cli    *client.Client
-	stream *client.StreamClient
+	client *greptime.Client
 )
 
 func init() {
-	cfg := config.New("127.0.0.1").WithDatabase("public")
+	cfg := greptime.NewConfig("127.0.0.1").WithDatabase("public")
 
-	cli_, err := client.New(cfg)
+	cli_, err := greptime.NewClient(cfg)
 	if err != nil {
 		log.Panic(err)
 	}
-	cli = cli_
-
-	stream_, err := client.NewStreamClient(cfg)
-	if err != nil {
-		log.Panic(err)
-	}
-	stream = stream_
+	client = cli_
 }
 
-func main() {
+func data() *table.Table {
 	tbl, err := table.New("monitors_with_schema")
 	if err != nil {
 		log.Println(err)
@@ -73,18 +65,31 @@ func main() {
 		log.Println(err)
 	}
 
-	{ // client write data into GreptimeDB
-		resp, err := cli.Write(context.Background(), tbl)
-		if err != nil {
-			log.Println(err)
-		}
-		log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
-	}
+	return tbl
+}
 
-	{ // stream client send data into GreptimeDB
-		if err := stream.Send(context.Background(), tbl); err != nil {
-			log.Println(err)
-		}
+func write() {
+	resp, err := client.Write(context.Background(), data())
+	if err != nil {
+		log.Println(err)
 	}
+	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
+}
 
+func streamWrite() {
+	ctx := context.Background()
+	if err := client.StreamWrite(ctx, data()); err != nil {
+		log.Println(err)
+	}
+	affected, err := client.CloseStream(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Printf("affected rows: %d\n", affected.GetValue())
+}
+
+func main() {
+	write()
+	time.Sleep(time.Millisecond * 100)
+	streamWrite()
 }

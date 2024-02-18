@@ -1,16 +1,5 @@
 # Insert data into GreptimeDB
 
-## start GreptimeDB via Docker
-
-```shell
-docker run --rm -p 4000-4003:4000-4003 \
---name greptime greptime/greptimedb standalone start \
---http-addr 0.0.0.0:4000 \
---rpc-addr 0.0.0.0:4001 \
---mysql-addr 0.0.0.0:4002 \
---postgres-addr 0.0.0.0:4003
-```
-
 ## Insert
 
 ```go
@@ -20,7 +9,8 @@ go run main.go
 Output:
 
 ```log
-2024/02/07 11:26:26 affected rows: 2
+2024/02/18 11:06:20 affected rows: 2
+2024/02/18 11:06:20 affected rows: 2
 ```
 
 ## Query
@@ -49,8 +39,10 @@ mysql> select * from monitors_with_schema;
 +------+-------+-------------+----------------------------+
 | id   | host  | temperature | timestamp                  |
 +------+-------+-------------+----------------------------+
-|    1 | hello |         1.1 | 2024-02-07 03:26:26.467898 |
-|    2 | hello |         2.2 | 2024-02-07 03:26:26.467900 |
+|    1 | hello |         1.1 | 2024-02-18 03:12:05.033351 |
+|    1 | hello |         1.1 | 2024-02-18 03:12:05.158068 |
+|    2 | hello |         2.2 | 2024-02-18 03:12:05.033352 |
+|    2 | hello |         2.2 | 2024-02-18 03:12:05.158076 |
 +------+-------+-------------+----------------------------+
-2 rows in set (0.03 sec)
+4 rows in set (0.01 sec)
 ```
