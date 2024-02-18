@@ -36,7 +36,7 @@ type Client struct {
 	stream gpb.GreptimeDatabase_HandleRequestsClient
 }
 
-// New helps to create the greptimedb client, which will be responsible write data into GreptimeDB.
+// NewClient helps to create the greptimedb client, which will be responsible write data into GreptimeDB.
 func NewClient(cfg *Config) (*Client, error) {
 	conn, err := grpc.Dial(cfg.GetEndpoint(), cfg.Options().Build()...)
 	if err != nil {
@@ -118,7 +118,7 @@ func (c *Client) Create(ctx context.Context, body any) (*gpb.GreptimeResponse, e
 	return c.Write(ctx, tbl)
 }
 
-// StreamSend is to send the data into GreptimeDB via explicit schema.
+// StreamWrite is to send the data into GreptimeDB via explicit schema.
 //
 //	tbl, err := table.New(<tableName>)
 //
@@ -132,7 +132,7 @@ func (c *Client) Create(ctx context.Context, body any) (*gpb.GreptimeResponse, e
 //	tbl.AddRow(1, "hello", 1.1, time.Now())
 //
 //	// send data into GreptimeDB
-//	resp, err := client.StreamSend(context.Background(), tbl)
+//	resp, err := client.StreamWrite(context.Background(), tbl)
 func (c *Client) StreamWrite(ctx context.Context, tables ...*table.Table) error {
 	if c.stream == nil {
 		stream, err := c.client.HandleRequests(ctx)
@@ -150,7 +150,7 @@ func (c *Client) StreamWrite(ctx context.Context, tables ...*table.Table) error 
 	return c.stream.Send(request_)
 }
 
-// StreamCreate is like [StreamSend] to send the data into GreptimeDB, but schema is defined in the struct tag.
+// StreamCreate is like [StreamWrite] to send the data into GreptimeDB, but schema is defined in the struct tag.
 //
 //	type monitor struct {
 //	  ID          int64     `greptime:"tag;column:id;type:int64"`
@@ -197,8 +197,8 @@ func (c *Client) StreamCreate(ctx context.Context, body any) error {
 }
 
 // CloseStream closes the stream. Once we’ve finished writing our client’s requests to the stream
-// using client.StreamSend, we need to call client.CloseStream to let GreptimeDB instance know that
-// we’ve finished writing and are expecting to receive a response.
+// using client.StreamWrite or client.StreamCreate, we need to call client.CloseStream to let
+// GreptimeDB know that we’ve finished writing and are expecting to receive a response.
 func (c *Client) CloseStream(ctx context.Context) (*gpb.AffectedRows, error) {
 	resp, err := c.stream.CloseAndRecv()
 	if err != nil {
