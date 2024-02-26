@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config
+package greptime
 
 import (
 	"fmt"
 	"time"
-
-	"github.com/GreptimeTeam/greptimedb-ingester-go/config/options"
 )
 
 // Config is to define how the Client behaves.
@@ -42,8 +40,8 @@ type Config struct {
 	keepaliveTimeout  time.Duration
 }
 
-// New helps to init Config with host only
-func New(host string) *Config {
+// NewConfig helps to init Config with host only
+func NewConfig(host string) *Config {
 	return &Config{
 		Host: host,
 		Port: 4001,
@@ -79,12 +77,12 @@ func (c *Config) GetEndpoint() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
 
-func (c *Config) Options() *options.Options {
+func (c *Config) Options() *Options {
 	if c.keepaliveInterval == 0 && c.keepaliveTimeout == 0 {
 		return nil
 	}
 
-	keepalive := options.NewKeepaliveOptions()
+	keepalive := NewKeepaliveOptions()
 
 	if c.keepaliveInterval != 0 {
 		keepalive.WithInterval(c.keepaliveInterval)
@@ -94,5 +92,5 @@ func (c *Config) Options() *options.Options {
 		keepalive.WithTimeout(c.keepaliveTimeout)
 	}
 
-	return options.New(keepalive)
+	return NewOptions(keepalive)
 }

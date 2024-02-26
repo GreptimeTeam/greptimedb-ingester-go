@@ -6,11 +6,6 @@
 
 Provide API to insert data into GreptimeDB.
 
-## Basic Example
-
-- [schema](examples/schema/main.go)
-- [tag](examples/tag/main.go)
-
 ## How To Use
 
 ### Installation
@@ -19,39 +14,29 @@ Provide API to insert data into GreptimeDB.
 go get -u github.com/GreptimeTeam/greptimedb-ingester-go
 ```
 
+### Import
+
+```go
+import greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
+
+```
+
 ### Example
 
 #### Config
 
-Initiate a Config for Client or StreamClient
+Initiate a Config for Client
 
 ```go
-cfg := config.New("<host>").
+cfg := greptime.NewConfig("<host>").
     WithAuth("<username>", "<password>").
-    WithDatabase(database)
+    WithDatabase("<database>")
 ```
 
-##### Options
-
-- keepalive
+#### Client
 
 ```go
-cfg = cfg.WithKeepalive(30*time.Second, 5*time.Second)
-```
-
-#### Client or StreamClient
-
-- Client
-
-```go
-cli, err := client.New(cfg)
-```
-
-- StreamClient
-
-```go
-
-stream, err := client.NewStreamClient(cfg)
+cli, err := greptime.NewClient(cfg)
 ```
 
 #### Insert & StreamInsert
@@ -81,14 +66,14 @@ The **GreptimeDB** column is for the datatypes supported in library, and the **G
 | BOOLEAN, BOOL                    | bool             |                                        |
 | STRING                           | string           |                                        |
 | BINARY, BYTES                    | []byte           |                                        |
-| DATE                             | Int or time.Time | the day elapsed since 1970-1-1         |
-| DATETIME                         | Int or time.Time | the millisecond elapsed since 1970-1-1 |
-| TIMESTAMP_SECOND                 | Int or time.Time |                                        |
-| TIMESTAMP_MILLISECOND, TIMESTAMP | Int or time.Time |                                        |
-| TIMESTAMP_MICROSECOND            | Int or time.Time |                                        |
-| TIMESTAMP_NANOSECOND             | Int or time.Time |                                        |
+| DATE                             | *Int* or time.Time | the day elapsed since 1970-1-1         |
+| DATETIME                         | *Int* or time.Time | the millisecond elapsed since 1970-1-1 |
+| TIMESTAMP_SECOND                 | *Int* or time.Time |                                        |
+| TIMESTAMP_MILLISECOND, TIMESTAMP | *Int* or time.Time |                                        |
+| TIMESTAMP_MICROSECOND            | *Int* or time.Time |                                        |
+| TIMESTAMP_NANOSECOND             | *Int* or time.Time |                                        |
 
-NOTE: Int is for all of Integer and Unsigned Integer in Go
+NOTE: *Int* is for all of Integer and Unsigned Integer in Go
 
 ##### With Schema predefined
 
@@ -97,6 +82,11 @@ you can define schema via Table and Column, and then AddRow to include the real 
 ###### define table schema, and add rows
 
 ```go
+import(
+    "github.com/GreptimeTeam/greptimedb-ingester-go/table"
+    "github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
+)
+
 tbl, err := table.New("<table_name>")
 
 tbl.AddTagColumn("id", types.INT64)
@@ -108,16 +98,18 @@ err := tbl.AddRow(2, "127.0.0.2", time.Now())
 ...
 ```
 
-###### Client Write into GreptimeDB
+###### Write into GreptimeDB
 
 ```go
 resp, err := cli.Write(context.Background(), tbl)
 ```
 
-###### StreamClient Send into GreptimeDB
+###### Stream Write into GreptimeDB
 
 ```go
-err := streamClient.Send(context.Background(), tbl)
+err := cli.StreamWrite(context.Background(), tbl)
+...
+affected, err := cli.CloseStream(ctx)
 ```
 
 ##### With Struct Tag
@@ -130,7 +122,7 @@ If you prefer ORM style, and define column-field relationship via struct field t
 - `tag`, `field`, `timestamp` is for [SemanticType][data-model], and the value is ignored
 - `column` is to define the column name
 - `type` is to define the data type. if type is timestamp, `precision` is supported
-- the metadata separator is `;`, and the key value separator is `:`
+- the metadata separator is `;` and the key value separator is `:`
 
 type supported is the same as described [Datatypes supported](#datatypes-supported), and case insensitive
 
@@ -166,16 +158,18 @@ monitors := []Monitor{
 }
 ```
 
-###### Client Create into GreptimeDB
+###### Create into GreptimeDB
 
 ```go
 resp, err := cli.Create(context.Background(), monitors)
 ```
 
-###### StreamClient Create into GreptimeDB
+###### Stream Create into GreptimeDB
 
 ```go
-err := streamClient.Create(context.Background(), monitors)
+err := cli.StreamCreate(context.Background(), monitors)
+...
+affected, err := cli.CloseStream(ctx)
 ```
 
 #### Query

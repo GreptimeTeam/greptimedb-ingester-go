@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package options
+package greptime
 
 import (
 	"time"
@@ -20,12 +20,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
-
-	greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
 )
 
 var (
-	uaOpt = grpc.WithUserAgent("greptimedb-ingester-go/" + greptime.Version)
+	uaOpt = grpc.WithUserAgent("greptimedb-ingester-go/" + Version)
 
 	// TODO(yuanbohan): SecurityOptions
 	insecureOpt = grpc.WithTransportCredentials(insecure.NewCredentials())
@@ -38,7 +36,7 @@ type Options struct {
 	keepalive *KeepaliveOption
 }
 
-func New(keepalive *KeepaliveOption) *Options {
+func NewOptions(keepalive *KeepaliveOption) *Options {
 	return &Options{
 		keepalive: keepalive,
 	}
