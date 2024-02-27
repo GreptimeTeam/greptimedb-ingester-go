@@ -73,17 +73,17 @@ func data() []Monitor {
 	}
 }
 
-func create() {
-	resp, err := client.Create(context.Background(), data())
+func writeObject() {
+	resp, err := client.WriteObject(context.Background(), data())
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
 
-func streamCreate() {
+func streamWriteObject() {
 	ctx := context.Background()
-	if err := client.StreamCreate(ctx, data()); err != nil {
+	if err := client.StreamWriteObject(ctx, data()); err != nil {
 		log.Println(err)
 	}
 	affected, err := client.CloseStream(ctx)
@@ -94,7 +94,7 @@ func streamCreate() {
 }
 
 func main() {
-	create()
+	writeObject()
 	time.Sleep(time.Millisecond * 100)
-	streamCreate()
+	streamWriteObject()
 }

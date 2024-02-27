@@ -336,7 +336,7 @@ func TestCreateMonitors(t *testing.T) {
 		},
 	}
 
-	resp, err := cli.Create(context.Background(), monitors)
+	resp, err := cli.WriteObject(context.Background(), monitors)
 	assert.Nil(t, err)
 	assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
 	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
@@ -607,7 +607,7 @@ func TestStreamCreate(t *testing.T) {
 		},
 	}
 
-	err = cli.StreamCreate(context.Background(), monitors)
+	err = cli.StreamWriteObject(context.Background(), monitors)
 	assert.Nil(t, err)
 	affected, err := cli.CloseStream(context.Background())
 	assert.EqualValues(t, 2, affected.GetValue())
