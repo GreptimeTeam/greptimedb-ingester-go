@@ -11,7 +11,7 @@ docker run --rm -p 4000-4003:4000-4003 \
 --postgres-addr 0.0.0.0:4003
 ```
 
-## Insert
+## Examples
 
-- [schema](schema/README.md)
-- [tag](tag/README.md)
+- [write table](table/README.md)
+- [write object](object/README.md)
