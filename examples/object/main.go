@@ -74,7 +74,10 @@ func data() []Monitor {
 }
 
 func writeObject() {
-	resp, err := client.WriteObject(context.Background(), data())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	resp, err := client.WriteObject(ctx, data())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,7 +85,9 @@ func writeObject() {
 }
 
 func streamWriteObject() {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
 	if err := client.StreamWriteObject(ctx, data()); err != nil {
 		log.Println(err)
 	}

@@ -15,87 +15,69 @@
 package greptime
 
 import (
+	"crypto/tls"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 )
 
 var (
-	uaOpt = grpc.WithUserAgent("greptimedb-ingester-go/" + Version)
-
-	// TODO(yuanbohan): SecurityOptions
+	uaOpt       = grpc.WithUserAgent("greptimedb-ingester-go/" + version)
+	secureOpt   = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: false}))
 	insecureOpt = grpc.WithTransportCredentials(insecure.NewCredentials())
-
-	defaultKeepaliveInterval = 30 * time.Second
-	defaultKeepaliveTimeout  = 5 * time.Second
 )
 
-type Options struct {
-	keepalive *KeepaliveOption
+type options struct {
+	secure    *grpc.DialOption
+	keepalive *grpc.DialOption
 }
 
-func NewOptions(keepalive *KeepaliveOption) *Options {
-	return &Options{
-		keepalive: keepalive,
+func newOptions() *options {
+	return &options{
+		secure: &insecureOpt,
 	}
 }
 
-func (o *Options) WithKeepalive(keepalive *KeepaliveOption) *Options {
-	o.keepalive = keepalive
-	return o
-}
-
-func (o *Options) Build() []grpc.DialOption {
-	options := []grpc.DialOption{uaOpt, insecureOpt}
-
-	if o == nil {
-		return options
-	}
-
-	if opt := o.keepalive.Build(); opt != nil {
-		options = append(options, *opt)
-	}
-
-	return options
-}
-
-type KeepaliveOption struct {
-	Interval time.Duration // default value is 30 seconds.
-	Timeout  time.Duration // default value is 5 seconds.
-}
-
-func NewKeepaliveOptions() *KeepaliveOption {
-	return &KeepaliveOption{
-		Interval: defaultKeepaliveInterval,
-		Timeout:  defaultKeepaliveTimeout,
-	}
-}
-
-func (o *KeepaliveOption) WithInterval(d time.Duration) *KeepaliveOption {
-	o.Interval = d
-	return o
-}
-
-func (o *KeepaliveOption) WithTimeout(d time.Duration) *KeepaliveOption {
-	o.Timeout = d
-	return o
-}
-
-func (o *KeepaliveOption) Build() *grpc.DialOption {
-	if o.Interval == 0 && o.Timeout == 0 {
-		return nil
+func (o *options) withKeepalive(interval, timeout time.Duration) *options {
+	if interval == 0 && timeout == 0 {
+		return o
 	}
 
 	param := keepalive.ClientParameters{PermitWithoutStream: true}
-	if o.Interval != 0 {
-		param.Time = o.Interval
+	if interval != 0 {
+		param.Time = interval
 	}
-	if o.Timeout != 0 {
-		param.Timeout = o.Timeout
+	if timeout != 0 {
+		param.Timeout = timeout
 	}
-	option := grpc.WithKeepaliveParams(param)
+	opt := grpc.WithKeepaliveParams(param)
+	o.keepalive = &opt
+	return o
+}
 
-	return &option
+func (o *options) withSecure(secure bool) *options {
+	if secure {
+		o.secure = &secureOpt
+	} else {
+		o.secure = &insecureOpt
+	}
+
+	return o
+}
+
+func (o *options) build() []grpc.DialOption {
+	opts := []grpc.DialOption{uaOpt}
+
+	if o.keepalive != nil {
+		opts = append(opts, *o.keepalive)
+	}
+
+	if o.secure != nil {
+		opts = append(opts, *o.secure)
+	}
+
+	return opts
 }

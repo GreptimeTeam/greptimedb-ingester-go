@@ -69,7 +69,9 @@ func data() *table.Table {
 }
 
 func write() {
-	resp, err := client.Write(context.Background(), data())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	resp, err := client.Write(ctx, data())
 	if err != nil {
 		log.Println(err)
 	}
@@ -77,7 +79,8 @@ func write() {
 }
 
 func streamWrite() {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
 	if err := client.StreamWrite(ctx, data()); err != nil {
 		log.Println(err)
 	}

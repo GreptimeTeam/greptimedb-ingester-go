@@ -14,4 +14,4 @@
 
 package greptime
 
-const Version = "v0.3.0" // THIS MUST BE THE SAME AS THE VERSION in GitHub release
+const version = "v0.4.0" // THIS MUST BE THE SAME AS THE VERSION in GitHub release

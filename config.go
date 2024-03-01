@@ -27,8 +27,6 @@ import (
 //     you can find them in GreptimeCloud service detail page.
 //   - Database is the default database the client will operate on.
 //     But you can change the database in InsertRequest or QueryRequest.
-//   - DialOptions and CallOptions are for gRPC service.
-//     You can specify them or leave them empty.
 type Config struct {
 	Host     string // no scheme or port included. example: 127.0.0.1
 	Port     int    // default: 4001
@@ -36,8 +34,7 @@ type Config struct {
 	Password string
 	Database string // the default database
 
-	keepaliveInterval time.Duration
-	keepaliveTimeout  time.Duration
+	options *options
 }
 
 // NewConfig helps to init Config with host only
@@ -45,6 +42,8 @@ func NewConfig(host string) *Config {
 	return &Config{
 		Host: host,
 		Port: 4001,
+
+		options: newOptions(),
 	}
 }
 
@@ -68,29 +67,15 @@ func (c *Config) WithAuth(username, password string) *Config {
 }
 
 func (c *Config) WithKeepalive(interval, timeout time.Duration) *Config {
-	c.keepaliveInterval = interval
-	c.keepaliveTimeout = timeout
+	c.options.withKeepalive(interval, timeout)
 	return c
 }
 
-func (c *Config) GetEndpoint() string {
-	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+func (c *Config) WithSecure(secure bool) *Config {
+	c.options.withSecure(secure)
+	return c
 }
 
-func (c *Config) Options() *Options {
-	if c.keepaliveInterval == 0 && c.keepaliveTimeout == 0 {
-		return nil
-	}
-
-	keepalive := NewKeepaliveOptions()
-
-	if c.keepaliveInterval != 0 {
-		keepalive.WithInterval(c.keepaliveInterval)
-	}
-
-	if c.keepaliveTimeout != 0 {
-		keepalive.WithTimeout(c.keepaliveTimeout)
-	}
-
-	return NewOptions(keepalive)
+func (c *Config) endpoint() string {
+	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }

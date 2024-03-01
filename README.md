@@ -26,8 +26,23 @@ Initiate a Config for Client
 
 ```go
 cfg := greptime.NewConfig("<host>").
+    WithPort(4001).
     WithAuth("<username>", "<password>").
     WithDatabase("<database>")
+```
+
+#### Options
+
+##### Secure
+
+```go
+cfg.WithSecure(true) // default is insecure
+```
+
+##### keepalive
+
+```go
+cfg.WithKeepalive(time.Second*30, time.Second*5) // keepalive is disabled by default
 ```
 
 ### Client
@@ -40,12 +55,12 @@ cli, err := greptime.NewClient(cfg)
 
 - you can Insert data into GreptimeDB via different style:
 
-  - [Table style](#with-table)
-  - [ORM style](#with-struct-tag)
+  - [Table style](#table-style)
+  - [ORM style](#orm-style)
 
 - streaming insert is to Send data into GreptimeDB without waiting for response.
 
-#### With Table
+#### Table style
 
 you can define schema via Table and Column, and then AddRow to include the real data you want to write.
 
@@ -82,7 +97,7 @@ err := cli.StreamWrite(context.Background(), tbl)
 affected, err := cli.CloseStream(ctx)
 ```
 
-#### With Struct Tag
+#### ORM style
 
 If you prefer ORM style, and define column-field relationship via struct field tag, you can try the following way.
 
