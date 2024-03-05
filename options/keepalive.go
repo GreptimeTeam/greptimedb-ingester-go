@@ -21,27 +21,32 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
+var (
+	defaultKeepaliveTime    = time.Second * 30
+	defaultKeepaliveTimeout = time.Second * 5
+)
+
 type KeepaliveOption struct {
-	interval time.Duration
-	timeout  time.Duration
+	time    time.Duration
+	timeout time.Duration
 }
 
-func NewKeepaliveOption(interval, timeout time.Duration) KeepaliveOption {
+func NewKeepaliveOption(time, timeout time.Duration) KeepaliveOption {
 	return KeepaliveOption{
-		interval: interval,
-		timeout:  timeout,
+		time:    time,
+		timeout: timeout,
 	}
 }
 
 func (opt KeepaliveOption) Build() grpc.DialOption {
 	param := keepalive.ClientParameters{
 		PermitWithoutStream: true,
-		Time:                time.Second * 30,
-		Timeout:             time.Second * 5,
+		Time:                defaultKeepaliveTime,
+		Timeout:             defaultKeepaliveTimeout,
 	}
 
-	if opt.interval != 0 {
-		param.Time = opt.interval
+	if opt.time != 0 {
+		param.Time = opt.time
 	}
 	if opt.timeout != 0 {
 		param.Timeout = opt.timeout

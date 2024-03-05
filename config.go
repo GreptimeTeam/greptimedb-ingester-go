@@ -66,15 +66,22 @@ func (c *Config) WithDatabase(database string) *Config {
 	return c
 }
 
-// WithAuth helps to specify the Basic Auth username and password
+// WithAuth helps to specify the Basic Auth username and password.
+// Leave them empty if you are in local environment.
 func (c *Config) WithAuth(username, password string) *Config {
 	c.Username = username
 	c.Password = password
 	return c
 }
 
-func (c *Config) WithKeepalive(interval, timeout time.Duration) *Config {
-	keepalive := options.NewKeepaliveOption(interval, timeout).Build()
+// WithKeepalive helps to set the keepalive option.
+//   - time. After a duration of this time if the client doesn't see any activity it
+//     pings the server to see if the transport is still alive.
+//     If set below 10s, a minimum value of 10s will be used instead.
+//   - timeout. After having pinged for keepalive check, the client waits for a duration
+//     of Timeout and if
+func (c *Config) WithKeepalive(time, timeout time.Duration) *Config {
+	keepalive := options.NewKeepaliveOption(time, timeout).Build()
 	c.options = append(c.options, keepalive)
 	return c
 }
@@ -86,7 +93,8 @@ func (c *Config) WithInsecure(insecure bool) *Config {
 	return c
 }
 
-// WithDialOption helps to specify the option which is not supported by ingester sdk yet.
+// WithDialOption helps to specify the dial option
+// which has not been supported by ingester sdk yet.
 func (c *Config) WithDialOption(opt grpc.DialOption) *Config {
 	c.options = append(c.options, opt)
 	return c
@@ -96,7 +104,7 @@ func (c *Config) endpoint() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
 
-func (c *Config) Build() []grpc.DialOption {
+func (c *Config) build() []grpc.DialOption {
 	if c.tls == nil {
 		opt := options.NewTlsOption(true)
 		c.tls = &opt
