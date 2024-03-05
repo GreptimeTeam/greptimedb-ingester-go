@@ -36,13 +36,13 @@ cfg := greptime.NewConfig("<host>").
 ##### Secure
 
 ```go
-cfg.WithSecure(true) // default is insecure
+cfg.WithInsecure(false) // default insecure=true
 ```
 
 ##### keepalive
 
 ```go
-cfg.WithKeepalive(time.Second*30, time.Second*5) // keepalive is disabled by default
+cfg.WithKeepalive(time.Second*30, time.Second*5) // keepalive isn't enabled by default
 ```
 
 ### Client

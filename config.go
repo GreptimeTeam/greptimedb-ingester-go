@@ -17,6 +17,10 @@ package greptime
 import (
 	"fmt"
 	"time"
+
+	"google.golang.org/grpc"
+
+	"github.com/GreptimeTeam/greptimedb-ingester-go/options"
 )
 
 // Config is to define how the Client behaves.
@@ -34,7 +38,8 @@ type Config struct {
 	Password string
 	Database string // the default database
 
-	options *options
+	tls     *options.TlsOption
+	options []grpc.DialOption
 }
 
 // NewConfig helps to init Config with host only
@@ -43,7 +48,9 @@ func NewConfig(host string) *Config {
 		Host: host,
 		Port: 4001,
 
-		options: newOptions(),
+		options: []grpc.DialOption{
+			options.NewUaOption(version).Build(),
+		},
 	}
 }
 
@@ -67,15 +74,32 @@ func (c *Config) WithAuth(username, password string) *Config {
 }
 
 func (c *Config) WithKeepalive(interval, timeout time.Duration) *Config {
-	c.options.withKeepalive(interval, timeout)
+	keepalive := options.NewKeepaliveOption(interval, timeout).Build()
+	c.options = append(c.options, keepalive)
 	return c
 }
 
-func (c *Config) WithSecure(secure bool) *Config {
-	c.options.withSecure(secure)
+func (c *Config) WithInsecure(insecure bool) *Config {
+	opt := options.NewTlsOption(insecure)
+	c.tls = &opt
+	return c
+}
+
+func (c *Config) WithDialOption(opt grpc.DialOption) *Config {
+	c.options = append(c.options, opt)
 	return c
 }
 
 func (c *Config) endpoint() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+}
+
+func (c *Config) Build() []grpc.DialOption {
+	if c.tls == nil {
+		opt := options.NewTlsOption(true)
+		c.tls = &opt
+	}
+
+	c.options = append(c.options, c.tls.Build())
+	return c.options
 }
