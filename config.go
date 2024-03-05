@@ -79,12 +79,14 @@ func (c *Config) WithKeepalive(interval, timeout time.Duration) *Config {
 	return c
 }
 
+// TODO(yuanbohan): support more tls options
 func (c *Config) WithInsecure(insecure bool) *Config {
 	opt := options.NewTlsOption(insecure)
 	c.tls = &opt
 	return c
 }
 
+// WithDialOption helps to specify the option which is not supported by ingester sdk yet.
 func (c *Config) WithDialOption(opt grpc.DialOption) *Config {
 	c.options = append(c.options, opt)
 	return c
