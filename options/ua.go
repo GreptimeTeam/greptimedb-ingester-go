@@ -12,6 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package greptime
+package options
 
-const version = "v0.4.0"
+import (
+	"google.golang.org/grpc"
+)
+
+type UserAgentOption struct {
+	version string
+}
+
+func NewUserAgentOption(version string) UserAgentOption {
+	return UserAgentOption{version: version}
+}
+
+func (opt UserAgentOption) Build() grpc.DialOption {
+	return grpc.WithUserAgent("greptimedb-ingester-go/" + opt.version)
+}

@@ -17,6 +17,10 @@ package greptime
 import (
 	"fmt"
 	"time"
+
+	"google.golang.org/grpc"
+
+	"github.com/GreptimeTeam/greptimedb-ingester-go/options"
 )
 
 // Config is to define how the Client behaves.
@@ -27,8 +31,6 @@ import (
 //     you can find them in GreptimeCloud service detail page.
 //   - Database is the default database the client will operate on.
 //     But you can change the database in InsertRequest or QueryRequest.
-//   - DialOptions and CallOptions are for gRPC service.
-//     You can specify them or leave them empty.
 type Config struct {
 	Host     string // no scheme or port included. example: 127.0.0.1
 	Port     int    // default: 4001
@@ -36,8 +38,8 @@ type Config struct {
 	Password string
 	Database string // the default database
 
-	keepaliveInterval time.Duration
-	keepaliveTimeout  time.Duration
+	tls     *options.TlsOption
+	options []grpc.DialOption
 }
 
 // NewConfig helps to init Config with host only
@@ -45,6 +47,10 @@ func NewConfig(host string) *Config {
 	return &Config{
 		Host: host,
 		Port: 4001,
+
+		options: []grpc.DialOption{
+			options.NewUserAgentOption(version).Build(),
+		},
 	}
 }
 
@@ -60,37 +66,50 @@ func (c *Config) WithDatabase(database string) *Config {
 	return c
 }
 
-// WithAuth helps to specify the Basic Auth username and password
+// WithAuth helps to specify the Basic Auth username and password.
+// Leave them empty if you are in local environment.
 func (c *Config) WithAuth(username, password string) *Config {
 	c.Username = username
 	c.Password = password
 	return c
 }
 
-func (c *Config) WithKeepalive(interval, timeout time.Duration) *Config {
-	c.keepaliveInterval = interval
-	c.keepaliveTimeout = timeout
+// WithKeepalive helps to set the keepalive option.
+//   - time. After a duration of this time if the client doesn't see any activity it
+//     pings the server to see if the transport is still alive.
+//     If set below 10s, a minimum value of 10s will be used instead.
+//   - timeout. After having pinged for keepalive check, the client waits for a duration
+//     of Timeout and if no activity is seen even after that the connection is closed.
+func (c *Config) WithKeepalive(time, timeout time.Duration) *Config {
+	keepalive := options.NewKeepaliveOption(time, timeout).Build()
+	c.options = append(c.options, keepalive)
 	return c
 }
 
-func (c *Config) GetEndpoint() string {
+// TODO(yuanbohan): support more tls options
+func (c *Config) WithInsecure(insecure bool) *Config {
+	opt := options.NewTlsOption(insecure)
+	c.tls = &opt
+	return c
+}
+
+// WithDialOption helps to specify the dial option
+// which has not been supported by ingester sdk yet.
+func (c *Config) WithDialOption(opt grpc.DialOption) *Config {
+	c.options = append(c.options, opt)
+	return c
+}
+
+func (c *Config) endpoint() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
 
-func (c *Config) Options() *Options {
-	if c.keepaliveInterval == 0 && c.keepaliveTimeout == 0 {
-		return nil
+func (c *Config) build() []grpc.DialOption {
+	if c.tls == nil {
+		opt := options.NewTlsOption(true)
+		c.tls = &opt
 	}
 
-	keepalive := NewKeepaliveOptions()
-
-	if c.keepaliveInterval != 0 {
-		keepalive.WithInterval(c.keepaliveInterval)
-	}
-
-	if c.keepaliveTimeout != 0 {
-		keepalive.WithTimeout(c.keepaliveTimeout)
-	}
-
-	return NewOptions(keepalive)
+	c.options = append(c.options, c.tls.Build())
+	return c.options
 }
