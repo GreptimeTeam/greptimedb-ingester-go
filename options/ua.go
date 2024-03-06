@@ -18,14 +18,14 @@ import (
 	"google.golang.org/grpc"
 )
 
-type UaOption struct {
+type UserAgentOption struct {
 	version string
 }
 
-func NewUaOption(version string) UaOption {
-	return UaOption{version: version}
+func NewUserAgentOption(version string) UserAgentOption {
+	return UserAgentOption{version: version}
 }
 
-func (opt UaOption) Build() grpc.DialOption {
+func (opt UserAgentOption) Build() grpc.DialOption {
 	return grpc.WithUserAgent("greptimedb-ingester-go/" + opt.version)
 }

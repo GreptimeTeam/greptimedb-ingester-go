@@ -49,7 +49,7 @@ func NewConfig(host string) *Config {
 		Port: 4001,
 
 		options: []grpc.DialOption{
-			options.NewUaOption(version).Build(),
+			options.NewUserAgentOption(version).Build(),
 		},
 	}
 }
@@ -79,7 +79,7 @@ func (c *Config) WithAuth(username, password string) *Config {
 //     pings the server to see if the transport is still alive.
 //     If set below 10s, a minimum value of 10s will be used instead.
 //   - timeout. After having pinged for keepalive check, the client waits for a duration
-//     of Timeout and if
+//     of Timeout and if no activity is seen even after that the connection is closed.
 func (c *Config) WithKeepalive(time, timeout time.Duration) *Config {
 	keepalive := options.NewKeepaliveOption(time, timeout).Build()
 	c.options = append(c.options, keepalive)
