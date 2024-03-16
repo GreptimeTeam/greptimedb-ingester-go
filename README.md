@@ -89,10 +89,31 @@ err := tbl.AddRow(2, "127.0.0.2", time.Now())
 resp, err := cli.Write(context.Background(), tbl)
 ```
 
+##### Delete in GreptimeDB
+
+```go
+dtbl, err := table.New("<table_name>")
+dtbl.AddTagColumn("id", types.INT64)
+dtbl.AddFieldColumn("host", types.STRING)
+dtbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND)
+
+// timestamp is the time you want to delete row
+err := dtbl.AddRow(1, "127.0.0.1",timestamp)
+
+affected, err := cli.Delete(context.Background(),dtbl)
+```
+
 ##### Stream Write into GreptimeDB
 
 ```go
 err := cli.StreamWrite(context.Background(), tbl)
+...
+affected, err := cli.CloseStream(ctx)
+```
+##### Stream Delete in GreptimeDB
+    
+```go
+err := cli.StreamDelete(context.Background(), tbl)
 ...
 affected, err := cli.CloseStream(ctx)
 ```
@@ -149,10 +170,28 @@ monitors := []Monitor{
 resp, err := cli.WriteObject(context.Background(), monitors)
 ```
 
+##### DeleteObject in GreptimeDB
+
+```go
+deleteMonitors := monitors[:1]
+
+affected, err := cli.DeleteObject(context.Background(), deleteMonitors)
+```
+
 ##### Stream WriteObject into GreptimeDB
 
 ```go
 err := cli.StreamWriteObject(context.Background(), monitors)
+...
+affected, err := cli.CloseStream(ctx)
+```
+
+##### Stream DeleteObject in GreptimeDB
+
+```go
+deleteMonitors := monitors[:1]
+
+err := cli.StreamDeleteObject(context.Background(), deleteMonitors)
 ...
 affected, err := cli.CloseStream(ctx)
 ```

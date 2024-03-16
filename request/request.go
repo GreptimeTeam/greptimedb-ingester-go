@@ -20,6 +20,7 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
 type Request struct {
@@ -52,7 +53,7 @@ func (r *Request) IsZero() bool {
 	return r.tables == nil || len(r.tables) == 0
 }
 
-func (r *Request) Build() (*gpb.GreptimeRequest, error) {
+func (r *Request) Build(writeOp types.WriteOp) (*gpb.GreptimeRequest, error) {
 	if r.IsZero() {
 		return nil, errs.ErrEmptyTable
 	}
@@ -62,18 +63,40 @@ func (r *Request) Build() (*gpb.GreptimeRequest, error) {
 		return nil, err
 	}
 
-	reqs := make([]*gpb.RowInsertRequest, 0, len(r.tables))
-	for _, table := range r.tables {
-		req, err := table.ToRequest()
-		if err != nil {
-			return nil, err
+	switch writeOp {
+	case types.Insert:
+		insertReqs := make([]*gpb.RowInsertRequest, 0, len(r.tables))
+		for _, table := range r.tables {
+			req, err := table.ToInsertRequest()
+			if err != nil {
+				return nil, err
+			}
+			insertReqs = append(insertReqs, req)
 		}
-		reqs = append(reqs, req)
-	}
+		req := &gpb.GreptimeRequest_RowInserts{
+			RowInserts: &gpb.RowInsertRequests{Inserts: insertReqs},
+		}
+		return &gpb.GreptimeRequest{
+			Header:  header,
+			Request: req,
+		}, nil
+	case types.Delete:
+		deleteReqs := make([]*gpb.RowDeleteRequest, 0, len(r.tables))
+		for _, table := range r.tables {
+			req, err := table.ToDeleteRequest()
+			if err != nil {
+				return nil, err
+			}
+			deleteReqs = append(deleteReqs, req)
+		}
 
-	req := &gpb.GreptimeRequest_RowInserts{
-		RowInserts: &gpb.RowInsertRequests{Inserts: reqs},
+		req := &gpb.GreptimeRequest_RowDeletes{
+			RowDeletes: &gpb.RowDeleteRequests{Deletes: deleteReqs},
+		}
+		return &gpb.GreptimeRequest{
+			Header:  header,
+			Request: req,
+		}, nil
 	}
-	return &gpb.GreptimeRequest{Header: header, Request: req}, nil
-
+	return nil, errs.ErrInvalidWriteOp
 }

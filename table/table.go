@@ -204,7 +204,7 @@ func (t *Table) sanitate_if_needed(name string) (string, error) {
 	return name, nil
 }
 
-func (t *Table) ToRequest() (*gpb.RowInsertRequest, error) {
+func (t *Table) ToInsertRequest() (*gpb.RowInsertRequest, error) {
 	if t.IsEmpty() {
 		return nil, errs.ErrEmptyTable
 	}
@@ -214,9 +214,24 @@ func (t *Table) ToRequest() (*gpb.RowInsertRequest, error) {
 		return nil, err
 	}
 
-	req := &gpb.RowInsertRequest{
+	return &gpb.RowInsertRequest{
 		TableName: name,
 		Rows:      t.GetRows(),
+	}, nil
+}
+
+func (t *Table) ToDeleteRequest() (*gpb.RowDeleteRequest, error) {
+	if t.IsEmpty() {
+		return nil, errs.ErrEmptyTable
 	}
-	return req, nil
+
+	name, err := t.GetName()
+	if err != nil {
+		return nil, err
+	}
+
+	return &gpb.RowDeleteRequest{
+		TableName: name,
+		Rows:      t.GetRows(),
+	}, nil
 }

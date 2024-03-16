@@ -24,6 +24,7 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/schema"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
 // Client helps to write data into GreptimeDB. A Client is safe for concurrent
@@ -47,6 +48,17 @@ func NewClient(cfg *Config) (*Client, error) {
 	return &Client{cfg: cfg, client: client}, nil
 }
 
+// write is create the request and send it to GreptimeDB.
+// It is can set up the WriteOp as [Insert,Delete]
+func (c *Client) write(ctx context.Context, writeOp types.WriteOp, tables ...*table.Table) (*gpb.GreptimeResponse, error) {
+	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
+	request_, err := request.New(header_, tables...).Build(writeOp)
+	if err != nil {
+		return nil, err
+	}
+	return c.client.Handle(ctx, request_)
+}
+
 // Write is to write the data into GreptimeDB via explicit schema.
 //
 //	tbl, err := table.New(<tableName>)
@@ -56,19 +68,31 @@ func NewClient(cfg *Config) (*Client, error) {
 //	tbl.AddFieldColumn("field1", types.STRING)
 //	tbl.AddFieldColumn("field2", types.FLOAT64)
 //	tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECOND)
-//
+//	timestamp := time.Now()
 //	// you can add multiple row(s). This is the real data.
-//	tbl.AddRow(1, "hello", 1.1, time.Now())
+//	tbl.AddRow(1, "hello", 1.1, timestamp)
 //
 //	// write data into GreptimeDB
 //	resp, err := client.Write(context.Background(), tbl)
 func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*gpb.GreptimeResponse, error) {
-	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
-	request_, err := request.New(header_, tables...).Build()
-	if err != nil {
-		return nil, err
-	}
-	return c.client.Handle(ctx, request_)
+	return c.write(ctx, types.Insert, tables...)
+}
+
+// Delete is to delete the data in GreptimeDB via explicit schema.
+//
+//	tbl, err := table.New(<tableName>)
+//
+//	// add column at first. This is to define the schema of the table.
+//	tbl.AddTagColumn("tag1", types.INT64)
+//	tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECOND)
+//
+//	// you can add multiple row(s). This is the real data.
+//	tbl.AddRow("tag1", timestamp)
+//
+//	// delete data in GreptimeDB
+//	resp, err := client.Delete(context.Background() tbl)
+func (c *Client) Delete(ctx context.Context, tables ...*table.Table) (*gpb.GreptimeResponse, error) {
+	return c.write(ctx, types.Delete, tables...)
 }
 
 // WriteObject is like [Write] to write the data into GreptimeDB, but schema is defined in the struct tag.
@@ -115,7 +139,35 @@ func (c *Client) WriteObject(ctx context.Context, obj any) (*gpb.GreptimeRespons
 		return nil, err
 	}
 
-	return c.Write(ctx, tbl)
+	return c.write(ctx, types.Insert, tbl)
+}
+
+// deleteObject is like [Delete] to delete the data in GreptimeDB, but schema is defined in the struct tag.
+// resp, err := client.WriteObject(context.Background(), deleteMonitors)
+func (c *Client) DeleteObject(ctx context.Context, obj any) (*gpb.GreptimeResponse, error) {
+	tbl, err := schema.Parse(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.write(ctx, types.Delete, tbl)
+}
+
+func (c *Client) streamWrite(ctx context.Context, writeOp types.WriteOp, tables ...*table.Table) error {
+	if c.stream == nil {
+		stream, err := c.client.HandleRequests(ctx)
+		if err != nil {
+			return err
+		}
+		c.stream = stream
+	}
+
+	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
+	request_, err := request.New(header_, tables...).Build(writeOp)
+	if err != nil {
+		return err
+	}
+	return c.stream.Send(request_)
 }
 
 // StreamWrite is to send the data into GreptimeDB via explicit schema.
@@ -127,27 +179,31 @@ func (c *Client) WriteObject(ctx context.Context, obj any) (*gpb.GreptimeRespons
 //	tbl.AddFieldColumn("field1", types.STRING)
 //	tbl.AddFieldColumn("field2", types.FLOAT64)
 //	tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECOND)
-//
+//	timestamp = time.Now()
 //	// you can add multiple row(s). This is the real data.
-//	tbl.AddRow(1, "hello", 1.1, time.Now())
+//	tbl.AddRow(1, "hello", 1.1, timestamp)
 //
 //	// send data into GreptimeDB
 //	resp, err := client.StreamWrite(context.Background(), tbl)
 func (c *Client) StreamWrite(ctx context.Context, tables ...*table.Table) error {
-	if c.stream == nil {
-		stream, err := c.client.HandleRequests(ctx)
-		if err != nil {
-			return err
-		}
-		c.stream = stream
-	}
+	return c.streamWrite(ctx, types.Insert, tables...)
+}
 
-	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
-	request_, err := request.New(header_, tables...).Build()
-	if err != nil {
-		return err
-	}
-	return c.stream.Send(request_)
+// StreamDelete is to send the data into GreptimeDB via explicit schema.
+//
+//	tbl, err := table.New(<tableName>)
+//
+//	// add column at first. This is to define the schema of the table.
+//	tbl.AddTagColumn("tag1", types.INT64)
+//	tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MILLISECOND)
+//
+//	// you can add multiple row(s). This is the real data.
+//	tbl.AddRow("tag1", timestamp)
+//
+//	// send data into GreptimeDB
+//	resp, err := client.StreamWrite(context.Background(), tbl)
+func (c *Client) StreamDelete(ctx context.Context, tables ...*table.Table) error {
+	return c.streamWrite(ctx, types.Delete, tables...)
 }
 
 // StreamWriteObject is like [StreamWrite] to send the data into GreptimeDB, but schema is defined in the struct tag.
@@ -193,7 +249,17 @@ func (c *Client) StreamWriteObject(ctx context.Context, body any) error {
 	if err != nil {
 		return err
 	}
-	return c.StreamWrite(ctx, tbl)
+	return c.streamWrite(ctx, types.Insert, tbl)
+}
+
+// StreamDeleteObject is like [StreamDelete] to send the data into GreptimeDB, but schema is defined in the struct tag.
+// resp, err := client.StreamWriteObject(context.Background(), deleteMonitors)
+func (c *Client) StreamDeleteObject(ctx context.Context, body any) error {
+	tbl, err := schema.Parse(body)
+	if err != nil {
+		return err
+	}
+	return c.streamWrite(ctx, types.Delete, tbl)
 }
 
 // CloseStream closes the stream. Once we’ve finished writing our client’s requests to the stream
