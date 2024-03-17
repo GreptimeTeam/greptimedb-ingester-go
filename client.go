@@ -48,7 +48,7 @@ func NewClient(cfg *Config) (*Client, error) {
 	return &Client{cfg: cfg, client: client}, nil
 }
 
-// write is create the request and send it to GreptimeDB.
+// submit is create the request and send it to GreptimeDB.
 // It is can set up the Operation as [INSERT,DELETE]
 func (c *Client) submit(ctx context.Context, operation types.Operation, tables ...*table.Table) (*gpb.GreptimeResponse, error) {
 	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
@@ -78,7 +78,7 @@ func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*gpb.Grepti
 	return c.submit(ctx, types.INSERT, tables...)
 }
 
-// Delete is to delete the data in GreptimeDB via explicit schema.
+// Delete is to delete the data from GreptimeDB via explicit schema.
 //
 //	tbl, err := table.New(<tableName>)
 //
@@ -89,7 +89,7 @@ func (c *Client) Write(ctx context.Context, tables ...*table.Table) (*gpb.Grepti
 //	// you can add multiple row(s). This is the real data.
 //	tbl.AddRow("tag1", timestamp)
 //
-//	// delete data in GreptimeDB
+//	// delete the data from GreptimeDB
 //	resp, err := client.Delete(context.Background() tbl)
 func (c *Client) Delete(ctx context.Context, tables ...*table.Table) (*gpb.GreptimeResponse, error) {
 	return c.submit(ctx, types.DELETE, tables...)
@@ -142,7 +142,7 @@ func (c *Client) WriteObject(ctx context.Context, obj any) (*gpb.GreptimeRespons
 	return c.submit(ctx, types.INSERT, tbl)
 }
 
-// deleteObject is like [Delete] to delete the data in GreptimeDB, but schema is defined in the struct tag.
+// DeleteObject is like [Delete] to delete the data from GreptimeDB, but schema is defined in the struct tag.
 // resp, err := client.WriteObject(context.Background(), deleteMonitors)
 func (c *Client) DeleteObject(ctx context.Context, obj any) (*gpb.GreptimeResponse, error) {
 	tbl, err := schema.Parse(obj)
@@ -153,7 +153,7 @@ func (c *Client) DeleteObject(ctx context.Context, obj any) (*gpb.GreptimeRespon
 	return c.submit(ctx, types.DELETE, tbl)
 }
 
-func (c *Client) streamWrite(ctx context.Context, operation types.Operation, tables ...*table.Table) error {
+func (c *Client) streamSubimt(ctx context.Context, operation types.Operation, tables ...*table.Table) error {
 	if c.stream == nil {
 		stream, err := c.client.HandleRequests(ctx)
 		if err != nil {
@@ -186,10 +186,10 @@ func (c *Client) streamWrite(ctx context.Context, operation types.Operation, tab
 //	// send data into GreptimeDB
 //	resp, err := client.StreamWrite(context.Background(), tbl)
 func (c *Client) StreamWrite(ctx context.Context, tables ...*table.Table) error {
-	return c.streamWrite(ctx, types.INSERT, tables...)
+	return c.streamSubimt(ctx, types.INSERT, tables...)
 }
 
-// StreamDelete is to send the data into GreptimeDB via explicit schema.
+// StreamDelete is to delete the data from GreptimeDB via explicit schema.
 //
 //	tbl, err := table.New(<tableName>)
 //
@@ -200,10 +200,10 @@ func (c *Client) StreamWrite(ctx context.Context, tables ...*table.Table) error 
 //	// you can add multiple row(s). This is the real data.
 //	tbl.AddRow("tag1", timestamp)
 //
-//	// send data into GreptimeDB
+//	// delete the data from GreptimeDB
 //	resp, err := client.StreamWrite(context.Background(), tbl)
 func (c *Client) StreamDelete(ctx context.Context, tables ...*table.Table) error {
-	return c.streamWrite(ctx, types.DELETE, tables...)
+	return c.streamSubimt(ctx, types.DELETE, tables...)
 }
 
 // StreamWriteObject is like [StreamWrite] to send the data into GreptimeDB, but schema is defined in the struct tag.
@@ -249,17 +249,17 @@ func (c *Client) StreamWriteObject(ctx context.Context, body any) error {
 	if err != nil {
 		return err
 	}
-	return c.streamWrite(ctx, types.INSERT, tbl)
+	return c.streamSubimt(ctx, types.INSERT, tbl)
 }
 
-// StreamDeleteObject is like [StreamDelete] to send the data into GreptimeDB, but schema is defined in the struct tag.
+// StreamDeleteObject is like [StreamDelete] to Delete the data from GreptimeDB, but schema is defined in the struct tag.
 // resp, err := client.StreamWriteObject(context.Background(), deleteMonitors)
 func (c *Client) StreamDeleteObject(ctx context.Context, body any) error {
 	tbl, err := schema.Parse(body)
 	if err != nil {
 		return err
 	}
-	return c.streamWrite(ctx, types.DELETE, tbl)
+	return c.streamSubimt(ctx, types.DELETE, tbl)
 }
 
 // CloseStream closes the stream. Once we’ve finished writing our client’s requests to the stream
