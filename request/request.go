@@ -24,14 +24,16 @@ import (
 )
 
 type Request struct {
-	header *header.Header
-	tables []*table.Table
+	header    *header.Header
+	tables    []*table.Table
+	operation types.Operation
 }
 
-func New(header *header.Header, tables ...*table.Table) *Request {
+func New(header *header.Header, operation types.Operation, tables ...*table.Table) *Request {
 	return &Request{
-		header: header,
-		tables: tables,
+		header:    header,
+		tables:    tables,
+		operation: operation,
 	}
 }
 
@@ -53,7 +55,7 @@ func (r *Request) IsZero() bool {
 	return r.tables == nil || len(r.tables) == 0
 }
 
-func (r *Request) Build(writeOp types.WriteOp) (*gpb.GreptimeRequest, error) {
+func (r *Request) Build() (*gpb.GreptimeRequest, error) {
 	if r.IsZero() {
 		return nil, errs.ErrEmptyTable
 	}
@@ -63,8 +65,8 @@ func (r *Request) Build(writeOp types.WriteOp) (*gpb.GreptimeRequest, error) {
 		return nil, err
 	}
 
-	switch writeOp {
-	case types.Insert:
+	switch r.operation {
+	case types.INSERT:
 		insertReqs := make([]*gpb.RowInsertRequest, 0, len(r.tables))
 		for _, table := range r.tables {
 			req, err := table.ToInsertRequest()
@@ -80,7 +82,7 @@ func (r *Request) Build(writeOp types.WriteOp) (*gpb.GreptimeRequest, error) {
 			Header:  header,
 			Request: req,
 		}, nil
-	case types.Delete:
+	case types.DELETE:
 		deleteReqs := make([]*gpb.RowDeleteRequest, 0, len(r.tables))
 		for _, table := range r.tables {
 			req, err := table.ToDeleteRequest()
@@ -98,5 +100,5 @@ func (r *Request) Build(writeOp types.WriteOp) (*gpb.GreptimeRequest, error) {
 			Request: req,
 		}, nil
 	}
-	return nil, errs.ErrInvalidWriteOp
+	return nil, errs.ErrInvalidOperation
 }

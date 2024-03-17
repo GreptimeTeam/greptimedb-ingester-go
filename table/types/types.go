@@ -251,9 +251,9 @@ func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 // WriteOp is the type of write operation
 // current supported [Insert, Delete]
 // TODO: [Update]
-type WriteOp uint
+type Operation uint
 
 const (
-	Insert WriteOp = iota
-	Delete
+	INSERT Operation = iota
+	DELETE
 )
