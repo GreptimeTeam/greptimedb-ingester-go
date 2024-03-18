@@ -20,17 +20,20 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/errs"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
 type Request struct {
-	header *header.Header
-	tables []*table.Table
+	header    *header.Header
+	tables    []*table.Table
+	operation types.Operation
 }
 
-func New(header *header.Header, tables ...*table.Table) *Request {
+func New(header *header.Header, operation types.Operation, tables ...*table.Table) *Request {
 	return &Request{
-		header: header,
-		tables: tables,
+		header:    header,
+		tables:    tables,
+		operation: operation,
 	}
 }
 
@@ -62,18 +65,40 @@ func (r *Request) Build() (*gpb.GreptimeRequest, error) {
 		return nil, err
 	}
 
-	reqs := make([]*gpb.RowInsertRequest, 0, len(r.tables))
-	for _, table := range r.tables {
-		req, err := table.ToRequest()
-		if err != nil {
-			return nil, err
+	switch r.operation {
+	case types.INSERT:
+		insertReqs := make([]*gpb.RowInsertRequest, 0, len(r.tables))
+		for _, table := range r.tables {
+			req, err := table.ToInsertRequest()
+			if err != nil {
+				return nil, err
+			}
+			insertReqs = append(insertReqs, req)
 		}
-		reqs = append(reqs, req)
-	}
+		req := &gpb.GreptimeRequest_RowInserts{
+			RowInserts: &gpb.RowInsertRequests{Inserts: insertReqs},
+		}
+		return &gpb.GreptimeRequest{
+			Header:  header,
+			Request: req,
+		}, nil
+	case types.DELETE:
+		deleteReqs := make([]*gpb.RowDeleteRequest, 0, len(r.tables))
+		for _, table := range r.tables {
+			req, err := table.ToDeleteRequest()
+			if err != nil {
+				return nil, err
+			}
+			deleteReqs = append(deleteReqs, req)
+		}
 
-	req := &gpb.GreptimeRequest_RowInserts{
-		RowInserts: &gpb.RowInsertRequests{Inserts: reqs},
+		req := &gpb.GreptimeRequest_RowDeletes{
+			RowDeletes: &gpb.RowDeleteRequests{Deletes: deleteReqs},
+		}
+		return &gpb.GreptimeRequest{
+			Header:  header,
+			Request: req,
+		}, nil
 	}
-	return &gpb.GreptimeRequest{Header: header, Request: req}, nil
-
+	return nil, errs.ErrInvalidOperation
 }

@@ -247,3 +247,13 @@ func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 	}
 
 }
+
+// Operation is the type of write operation
+// current supported [Insert, Delete]
+// TODO: [Update]
+type Operation uint
+
+const (
+	INSERT Operation = iota
+	DELETE
+)

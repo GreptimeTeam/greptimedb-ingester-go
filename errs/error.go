@@ -24,4 +24,5 @@ var (
 	ErrEmptyTableName    = errors.New("name of table should not be empty")
 	ErrEmptyTable        = errors.New("please add at least one row")
 	ErrEmptyColumn       = errors.New("column not set, please call AddColumn first")
+	ErrInvalidOperation  = errors.New("invalid operation")
 )

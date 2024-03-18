@@ -189,7 +189,7 @@ func newMysql() *Mysql {
 
 func init() {
 	repo := "greptime/greptimedb"
-	tag := "v0.6.0"
+	tag := "v0.7.0"
 
 	pool, err := dockertest.NewPool("")
 	if err != nil {
@@ -307,6 +307,100 @@ func TestWriteMonitors(t *testing.T) {
 	}
 }
 
+func TestDeleteMonitors(t *testing.T) {
+	loc, err := time.LoadLocation(timezone)
+	assert.Nil(t, err)
+	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
+	time1 := time.UnixMilli(ts1).In(loc)
+	ts2 := time.Now().Add(-2 * time.Minute).UnixMilli()
+	time2 := time.UnixMilli(ts2).In(loc)
+	ts3 := time.Now().Add(-3 * time.Minute).UnixMilli()
+	time3 := time.UnixMilli(ts3).In(loc)
+
+	monitors := []monitor{
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.1",
+			Memory:      1,
+			Cpu:         1.0,
+			Temperature: -1,
+			Ts:          time1,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.2",
+			Memory:      2,
+			Cpu:         2.0,
+			Temperature: -2,
+			Ts:          time2,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.3",
+			Memory:      3,
+			Cpu:         3.0,
+			Temperature: -3,
+			Ts:          time3,
+			Running:     true,
+		},
+	}
+
+	table, err := tbl.New(monitorTableName)
+	assert.Nil(t, err)
+
+	assert.Nil(t, table.AddTagColumn("id", types.INT64))
+	assert.Nil(t, table.AddTagColumn("host", types.STRING))
+	assert.Nil(t, table.AddFieldColumn("memory", types.UINT64))
+	assert.Nil(t, table.AddFieldColumn("cpu", types.FLOAT64))
+	assert.Nil(t, table.AddFieldColumn("temperature", types.INT64))
+	assert.Nil(t, table.AddFieldColumn("running", types.BOOLEAN))
+	assert.Nil(t, table.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND))
+
+	for _, monitor := range monitors {
+		err := table.AddRow(monitor.ID, monitor.Host,
+			monitor.Memory, monitor.Cpu, monitor.Temperature, monitor.Running,
+			monitor.Ts)
+		assert.Nil(t, err)
+	}
+
+	resp, err := cli.Write(context.Background(), table)
+	assert.Nil(t, err)
+	assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
+	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
+	assert.Equal(t, uint32(len(monitors)), resp.GetAffectedRows().GetValue())
+
+	dtable, err := tbl.New(monitorTableName)
+	assert.Nil(t, err)
+
+	assert.Nil(t, dtable.AddTagColumn("id", types.INT64))
+	assert.Nil(t, dtable.AddTagColumn("host", types.STRING))
+	assert.Nil(t, dtable.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND))
+	deleteMonitors := monitors[:1]
+	for _, monitor := range deleteMonitors {
+		err := dtable.AddRow(monitor.ID, monitor.Host, monitor.Ts)
+		assert.Nil(t, err)
+	}
+
+	resp, err = cli.Delete(context.Background(), dtable)
+
+	assert.Nil(t, err)
+	assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
+	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
+	assert.Equal(t, uint32(len(deleteMonitors)), resp.GetAffectedRows().GetValue())
+
+	monitors = monitors[1:]
+	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in %s order by host asc", monitorTableName, getMonitorsIds(monitors)))
+	assert.Nil(t, err)
+
+	assert.Equal(t, len(monitors), len(monitors_))
+
+	for i, monitor_ := range monitors_ {
+		assert.Equal(t, monitors[i], monitor_)
+	}
+}
+
 func TestCreateMonitors(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
@@ -345,6 +439,71 @@ func TestCreateMonitors(t *testing.T) {
 	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in %s order by host asc", monitorTableName, getMonitorsIds(monitors)))
 	assert.Nil(t, err)
 
+	assert.Equal(t, len(monitors), len(monitors_))
+
+	for i, monitor_ := range monitors_ {
+		assert.Equal(t, monitors[i], monitor_)
+	}
+}
+
+func TestDeleteObjMonitors(t *testing.T) {
+	loc, err := time.LoadLocation(timezone)
+	assert.Nil(t, err)
+	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
+	time1 := time.UnixMilli(ts1).In(loc)
+	ts2 := time.Now().Add(-2 * time.Minute).UnixMilli()
+	time2 := time.UnixMilli(ts2).In(loc)
+	ts3 := time.Now().Add(-3 * time.Minute).UnixMilli()
+	time3 := time.UnixMilli(ts3).In(loc)
+
+	monitors := []monitor{
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.1",
+			Memory:      1,
+			Cpu:         1.0,
+			Temperature: -1,
+			Ts:          time1,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.2",
+			Memory:      2,
+			Cpu:         2.0,
+			Temperature: -2,
+			Ts:          time2,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.3",
+			Memory:      3,
+			Cpu:         3.0,
+			Temperature: -3,
+			Ts:          time3,
+			Running:     true,
+		},
+	}
+
+	resp, err := cli.WriteObject(context.Background(), monitors)
+	assert.Nil(t, err)
+	assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
+	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
+	assert.Equal(t, uint32(len(monitors)), resp.GetAffectedRows().GetValue())
+
+	deleteMonitors := monitors[:1]
+	resp, err = cli.DeleteObject(context.Background(), deleteMonitors)
+
+	assert.Nil(t, err)
+	assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
+	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
+	assert.Equal(t, uint32(len(deleteMonitors)), resp.GetAffectedRows().GetValue())
+
+	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in %s order by host asc", monitorTableName, getMonitorsIds(monitors)))
+	assert.Nil(t, err)
+
+	monitors = monitors[1:]
 	assert.Equal(t, len(monitors), len(monitors_))
 
 	for i, monitor_ := range monitors_ {
@@ -578,6 +737,102 @@ func TestStreamWrite(t *testing.T) {
 	}
 }
 
+func TestStreamDelete(t *testing.T) {
+	loc, err := time.LoadLocation(timezone)
+	assert.Nil(t, err)
+	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
+	time1 := time.UnixMilli(ts1).In(loc)
+	ts2 := time.Now().Add(-2 * time.Minute).UnixMilli()
+	time2 := time.UnixMilli(ts2).In(loc)
+	ts3 := time.Now().Add(-3 * time.Minute).UnixMilli()
+	time3 := time.UnixMilli(ts3).In(loc)
+
+	monitors := []monitor{
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.1",
+			Memory:      1,
+			Cpu:         1.0,
+			Temperature: -1,
+			Ts:          time1,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.2",
+			Memory:      2,
+			Cpu:         2.0,
+			Temperature: -2,
+			Ts:          time2,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.3",
+			Memory:      3,
+			Cpu:         3.0,
+			Temperature: -3,
+			Ts:          time3,
+			Running:     true,
+		},
+	}
+
+	table, err := tbl.New(monitorTableName)
+	assert.Nil(t, err)
+
+	assert.Nil(t, table.AddTagColumn("id", types.INT64))
+	assert.Nil(t, table.AddTagColumn("host", types.STRING))
+	assert.Nil(t, table.AddFieldColumn("memory", types.UINT64))
+	assert.Nil(t, table.AddFieldColumn("cpu", types.FLOAT64))
+	assert.Nil(t, table.AddFieldColumn("temperature", types.INT64))
+	assert.Nil(t, table.AddFieldColumn("running", types.BOOLEAN))
+	assert.Nil(t, table.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND))
+
+	for _, monitor := range monitors {
+		err := table.AddRow(monitor.ID, monitor.Host,
+			monitor.Memory, monitor.Cpu, monitor.Temperature, monitor.Running,
+			monitor.Ts)
+		assert.Nil(t, err)
+	}
+
+	err = cli.StreamWrite(context.Background(), table)
+	assert.Nil(t, err)
+	affected, err := cli.CloseStream(context.Background())
+	assert.EqualValues(t, uint(len(monitors)), affected.GetValue())
+	assert.Nil(t, err)
+
+	// test stream delete after wirted data points
+	dtable, err := tbl.New(monitorTableName)
+	assert.Nil(t, err)
+
+	assert.Nil(t, dtable.AddTagColumn("id", types.INT64))
+	assert.Nil(t, dtable.AddTagColumn("host", types.STRING))
+	assert.Nil(t, dtable.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND))
+
+	deleteMonitors := monitors[:1]
+
+	for _, monitor := range deleteMonitors {
+		err := dtable.AddRow(monitor.ID, monitor.Host, monitor.Ts)
+		assert.Nil(t, err)
+	}
+	err = cli.StreamDelete(context.Background(), dtable)
+	assert.Nil(t, err)
+	affected, err = cli.CloseStream(context.Background())
+
+	assert.EqualValues(t, uint(len(deleteMonitors)), affected.GetValue())
+	assert.Nil(t, err)
+
+	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in %s order by host asc", monitorTableName, getMonitorsIds(monitors)))
+	assert.Nil(t, err)
+
+	monitors = monitors[1:]
+	assert.Equal(t, len(monitors), len(monitors_))
+
+	for i, monitor_ := range monitors_ {
+		assert.Equal(t, monitors[i], monitor_)
+	}
+}
+
 func TestStreamCreate(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
@@ -610,12 +865,75 @@ func TestStreamCreate(t *testing.T) {
 	err = cli.StreamWriteObject(context.Background(), monitors)
 	assert.Nil(t, err)
 	affected, err := cli.CloseStream(context.Background())
-	assert.EqualValues(t, 2, affected.GetValue())
+	assert.EqualValues(t, uint32(len(monitors)), affected.GetValue())
 	assert.Nil(t, err)
 
 	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in %s order by host asc", monitorTableName, getMonitorsIds(monitors)))
 	assert.Nil(t, err)
 
+	assert.Equal(t, len(monitors), len(monitors_))
+
+	for i, monitor_ := range monitors_ {
+		assert.Equal(t, monitors[i], monitor_)
+	}
+}
+
+func TestStreamDeleteObj(t *testing.T) {
+	loc, err := time.LoadLocation(timezone)
+	assert.Nil(t, err)
+	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
+	time1 := time.UnixMilli(ts1).In(loc)
+	ts2 := time.Now().Add(-2 * time.Minute).UnixMilli()
+	time2 := time.UnixMilli(ts2).In(loc)
+	ts3 := time.Now().Add(-3 * time.Minute).UnixMilli()
+	time3 := time.UnixMilli(ts3).In(loc)
+
+	monitors := []monitor{
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.1",
+			Memory:      1,
+			Cpu:         1.0,
+			Temperature: -1,
+			Ts:          time1,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.2",
+			Memory:      2,
+			Cpu:         2.0,
+			Temperature: -2,
+			Ts:          time2,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "127.0.0.3",
+			Memory:      3,
+			Cpu:         3.0,
+			Temperature: -3,
+			Ts:          time3,
+			Running:     true,
+		},
+	}
+
+	err = cli.StreamWriteObject(context.Background(), monitors)
+	assert.Nil(t, err)
+	affected, err := cli.CloseStream(context.Background())
+	assert.EqualValues(t, uint32(len(monitors)), affected.GetValue())
+	assert.Nil(t, err)
+
+	deleteMonitors := monitors[:1]
+	err = cli.StreamDeleteObject(context.Background(), deleteMonitors)
+	assert.Nil(t, err)
+	affected, err = cli.CloseStream(context.Background())
+	assert.EqualValues(t, uint32(len(deleteMonitors)), affected.GetValue())
+	assert.Nil(t, err)
+
+	monitors = monitors[1:]
+	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in %s order by host asc", monitorTableName, getMonitorsIds(monitors)))
+	assert.Nil(t, err)
 	assert.Equal(t, len(monitors), len(monitors_))
 
 	for i, monitor_ := range monitors_ {
