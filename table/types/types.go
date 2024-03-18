@@ -248,8 +248,11 @@ func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 
 }
 
-// Operation is the type of write operation
-// current supported [Insert, Delete]
+// Operation is to identify the operation type of the request.
+// current supported:
+//   - Insert
+//   - Delete
+//
 // TODO: [Update]
 type Operation uint
 
