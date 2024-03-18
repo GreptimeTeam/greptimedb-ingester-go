@@ -89,12 +89,11 @@ err := tbl.AddRow(2, "127.0.0.2", time.Now())
 resp, err := cli.Write(context.Background(), tbl)
 ```
 
-##### Delete in GreptimeDB
+##### Delete from GreptimeDB
 
 ```go
 dtbl, err := table.New("<table_name>")
 dtbl.AddTagColumn("id", types.INT64)
-dtbl.AddFieldColumn("host", types.STRING)
 dtbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND)
 
 // timestamp is the time you want to delete row
@@ -110,8 +109,9 @@ err := cli.StreamWrite(context.Background(), tbl)
 ...
 affected, err := cli.CloseStream(ctx)
 ```
-##### Stream Delete in GreptimeDB
-    
+
+##### Stream Delete from GreptimeDB
+
 ```go
 err := cli.StreamDelete(context.Background(), tbl)
 ...
