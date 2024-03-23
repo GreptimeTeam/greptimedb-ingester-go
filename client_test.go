@@ -307,7 +307,7 @@ func TestWriteMonitors(t *testing.T) {
 	}
 }
 
-func TestUpdateMonitors(t *testing.T) {
+func TestUpdateMonitor(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
@@ -487,7 +487,7 @@ func TestDeleteMonitors(t *testing.T) {
 	}
 }
 
-func TestCreateMonitors(t *testing.T) {
+func TestWriteObjMonitors(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
@@ -532,7 +532,7 @@ func TestCreateMonitors(t *testing.T) {
 	}
 }
 
-func TestUpdateObjMonitors(t *testing.T) {
+func TestUpdateObjMonitor(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
@@ -1054,7 +1054,7 @@ func TestStreamDelete(t *testing.T) {
 	}
 }
 
-func TestStreamCreate(t *testing.T) {
+func TestStreamWriteObj(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
