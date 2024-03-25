@@ -50,7 +50,7 @@ func (Monitor) TableName() string {
 	return "monitors_with_tag"
 }
 
-func data() []Monitor {
+func initData() []Monitor {
 	return []Monitor{
 		{
 			ID:          1,
@@ -70,25 +70,58 @@ func data() []Monitor {
 			Ts:          time.Now(),
 			Running:     true,
 		},
+		{
+			ID:          3,
+			Host:        "127.0.0.3",
+			Memory:      3,
+			Cpu:         3.0,
+			Temperature: -3,
+			Ts:          time.Now(),
+			Running:     true,
+		},
 	}
 }
-
-func writeObject() {
+func writeObject(data []Monitor) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	resp, err := client.WriteObject(ctx, data())
+	resp, err := client.WriteObject(ctx, data)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
 
-func streamWriteObject() {
+func deleteObject(data []Monitor) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	if err := client.StreamWriteObject(ctx, data()); err != nil {
+	resp, err := client.DeleteObject(ctx, data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
+}
+
+func streamWriteObject(data []Monitor) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	if err := client.StreamWriteObject(ctx, data); err != nil {
+		log.Println(err)
+	}
+	affected, err := client.CloseStream(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Printf("affected rows: %d\n", affected.GetValue())
+}
+
+func streamDeleteObject(data []Monitor) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	if err := client.StreamDeleteObject(ctx, data); err != nil {
 		log.Println(err)
 	}
 	affected, err := client.CloseStream(ctx)
@@ -99,7 +132,23 @@ func streamWriteObject() {
 }
 
 func main() {
-	writeObject()
+	data := initData()
+	// insert
+	writeObject(data)
+	// update
+	data[0].Cpu = 1.1
+	writeObject(data)
+	// delete
+	deleteObject(data[2:])
+
 	time.Sleep(time.Millisecond * 100)
-	streamWriteObject()
+
+	data = initData()
+	// stream insert
+	streamWriteObject(data)
+	data[0].Cpu = 1.1
+	// stream update
+	streamWriteObject(data)
+	// stream delete
+	streamDeleteObject(data[2:])
 }

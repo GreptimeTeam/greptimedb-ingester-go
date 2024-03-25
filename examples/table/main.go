@@ -24,6 +24,12 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
+const (
+	INSERT = 0
+	UPDATE = 1
+	DELETE = 2
+)
+
 var (
 	client *greptime.Client
 )
@@ -38,50 +44,126 @@ func init() {
 	client = cli_
 }
 
-func data() *table.Table {
-	tbl, err := table.New("monitors_with_schema")
+func initData() []*table.Table {
+
+	time1 := time.Now()
+	time2 := time.Now()
+	time3 := time.Now()
+
+	itbl, err := table.New("monitors_with_schema")
+	if err != nil {
+		log.Println(err)
+	}
+	// add column at first. This is to define the schema of the table.
+	if err := itbl.AddTagColumn("id", types.INT64); err != nil {
+		log.Println(err)
+	}
+	if err := itbl.AddFieldColumn("host", types.STRING); err != nil {
+		log.Println(err)
+	}
+	if err := itbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
+		log.Println(err)
+	}
+	if err := itbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
+		log.Println(err)
+	}
+
+	if err := itbl.AddRow(1, "hello", 1.1, time1); err != nil {
+		log.Println(err)
+	}
+	if err := itbl.AddRow(2, "hello", 2.2, time2); err != nil {
+		log.Println(err)
+	}
+	if err := itbl.AddRow(3, "hello", 3.3, time3); err != nil {
+		log.Println(err)
+	}
+
+	utbl, err := table.New("monitors_with_schema")
 	if err != nil {
 		log.Println(err)
 	}
 
 	// add column at first. This is to define the schema of the table.
-	if err := tbl.AddTagColumn("id", types.INT64); err != nil {
+	if err := utbl.AddTagColumn("id", types.INT64); err != nil {
 		log.Println(err)
 	}
-	if err := tbl.AddFieldColumn("host", types.STRING); err != nil {
+	if err := utbl.AddFieldColumn("host", types.STRING); err != nil {
 		log.Println(err)
 	}
-	if err := tbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
+	if err := utbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
 		log.Println(err)
 	}
-	if err := tbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
-		log.Println(err)
-	}
-
-	if err := tbl.AddRow(1, "hello", 1.1, time.Now()); err != nil {
-		log.Println(err)
-	}
-	if err := tbl.AddRow(2, "hello", 2.2, time.Now()); err != nil {
+	if err := utbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
 		log.Println(err)
 	}
 
-	return tbl
+	if err := utbl.AddRow(1, "hello", 1.2, time1); err != nil {
+		log.Println(err)
+	}
+
+	dtbl, err := table.New("monitors_with_schema")
+	if err != nil {
+		log.Println(err)
+	}
+
+	// add column at first. This is to define the schema of the table.
+	if err := dtbl.AddTagColumn("id", types.INT64); err != nil {
+		log.Println(err)
+	}
+	if err := dtbl.AddFieldColumn("host", types.STRING); err != nil {
+		log.Println(err)
+	}
+	if err := dtbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
+		log.Println(err)
+	}
+	if err := dtbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
+		log.Println(err)
+	}
+
+	if err := dtbl.AddRow(3, "hello", 3.3, time3); err != nil {
+		log.Println(err)
+	}
+
+	return []*table.Table{itbl, utbl, dtbl}
 }
 
-func write() {
+func write(data *table.Table) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	resp, err := client.Write(ctx, data())
+	resp, err := client.Write(ctx, data)
 	if err != nil {
 		log.Println(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
 
-func streamWrite() {
+func delete(data *table.Table) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	if err := client.StreamWrite(ctx, data()); err != nil {
+	resp, err := client.Delete(ctx, data)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
+}
+
+func streamWrite(data *table.Table) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	if err := client.StreamWrite(ctx, data); err != nil {
+		log.Println(err)
+	}
+	affected, err := client.CloseStream(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Printf("affected rows: %d\n", affected.GetValue())
+}
+
+func streamDelete(data *table.Table) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	if err := client.StreamDelete(ctx, data); err != nil {
 		log.Println(err)
 	}
 	affected, err := client.CloseStream(ctx)
@@ -92,7 +174,22 @@ func streamWrite() {
 }
 
 func main() {
-	write()
+	data := initData()
+	// insert
+	write(data[INSERT])
+	// update
+	write(data[UPDATE])
+	// delete
+	delete(data[DELETE])
+
 	time.Sleep(time.Millisecond * 100)
-	streamWrite()
+
+	data = initData()
+	// stream insert
+	streamWrite(data[INSERT])
+	// stream update
+	streamWrite(data[UPDATE])
+	// stream delete
+	streamDelete(data[DELETE])
+
 }

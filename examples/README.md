@@ -13,5 +13,9 @@ docker run --rm -p 4000-4003:4000-4003 \
 
 ## Examples
 
-- [write table](table/README.md)
-- [write object](object/README.md)
+- [table](table/README.md)
+- [object](object/README.md)
+
+## Query
+
+Your can using [MySQL Client](https://docs.greptime.com/user-guide/clients/mysql) to query the data from GreptimeDB.
