@@ -83,10 +83,6 @@ const (
 	// INTERVAL_YEAR_MONTH     ColumnType = 23
 	// INTERVAL_DAY_TIME       ColumnType = 24
 	// INTERVAL_MONTH_DAY_NANO ColumnType = 25
-	// DURATION_SECOND         ColumnType = 26
-	// DURATION_MILLISECOND    ColumnType = 27
-	// DURATION_MICROSECOND    ColumnType = 28
-	// DURATION_NANOSECOND     ColumnType = 29
 	// DECIMAL128              ColumnType = 30
 
 	// the following types are not from protocol buffer
