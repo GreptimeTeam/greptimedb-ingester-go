@@ -250,12 +250,6 @@ func parseValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
 		gpb.ColumnDataType_INTERVAL_MONTH_DAY_NANO:
 		return nil, fmt.Errorf("INTERVAL not implemented yet for %#v", val)
 
-	case gpb.ColumnDataType_DURATION_SECOND,
-		gpb.ColumnDataType_DURATION_MILLISECOND,
-		gpb.ColumnDataType_DURATION_MICROSECOND,
-		gpb.ColumnDataType_DURATION_NANOSECOND:
-		return nil, fmt.Errorf("DURATION not supported for %#v", val)
-
 	// TODO(yuanbohan): support decimal 128
 	case gpb.ColumnDataType_DECIMAL128:
 		return nil, fmt.Errorf("DECIMAL 128 not supported for %#v", val)
