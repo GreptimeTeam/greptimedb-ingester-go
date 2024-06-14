@@ -272,6 +272,10 @@ func (c *Client) StreamDeleteObject(ctx context.Context, body any) error {
 // using client.StreamWrite or client.StreamWriteObject, we need to call client.CloseStream to let
 // GreptimeDB know that we’ve finished writing and are expecting to receive a response.
 func (c *Client) CloseStream(ctx context.Context) (*gpb.AffectedRows, error) {
+	if c.stream == nil {
+		return &gpb.AffectedRows{}, nil
+	}
+
 	resp, err := c.stream.CloseAndRecv()
 	if err != nil {
 		return nil, err
