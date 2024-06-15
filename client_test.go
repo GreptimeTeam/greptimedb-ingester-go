@@ -873,6 +873,14 @@ func TestStreamWrite(t *testing.T) {
 	}
 }
 
+func TestStreamClose(t *testing.T) {
+	lc := newClient()
+
+	affected, err := lc.CloseStream(context.Background())
+	assert.EqualValues(t, 0, affected.GetValue())
+	assert.Nil(t, err)
+}
+
 func TestStreamUpdate(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
