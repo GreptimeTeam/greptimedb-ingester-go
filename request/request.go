@@ -52,7 +52,7 @@ func (r *Request) WithTables(tables ...*table.Table) *Request {
 }
 
 func (r *Request) IsZero() bool {
-	return r.tables == nil || len(r.tables) == 0
+	return r.tables == nil
 }
 
 func (r *Request) Build() (*gpb.GreptimeRequest, error) {
