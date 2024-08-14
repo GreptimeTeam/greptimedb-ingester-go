@@ -53,7 +53,7 @@ func (Monitor) TableName() string {
 func initData() []Monitor {
 	return []Monitor{
 		{
-			//Host:        "127.0.0.1",
+			Host:        "127.0.0.1",
 			Memory:      1,
 			Cpu:         1.3,
 			Temperature: -1,
