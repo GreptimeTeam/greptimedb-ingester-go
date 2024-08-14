@@ -24,7 +24,7 @@ Your can using [MySQL Client](https://docs.greptime.com/user-guide/clients/mysql
 ```shell
 $ mysql -h 127.0.0.1 -P 4002 public
 
-mysql> select *from monitors_with_tag;
+mysql> select * from monitors_with_tag;
 +------+-----------+--------+------+-------------+---------+----------------------------+
 | id   | host      | memory | cpu  | temperature | running | ts                         |
 +------+-----------+--------+------+-------------+---------+----------------------------+
