@@ -183,6 +183,9 @@ func parseValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
 	if !val.IsValid() {
 		return nil, nil
 	}
+	if val.Kind() == reflect.Pointer && val.IsNil() {
+		return nil, nil
+	}
 
 	switch typ {
 	case gpb.ColumnDataType_INT8, gpb.ColumnDataType_INT16, gpb.ColumnDataType_INT32, gpb.ColumnDataType_INT64:
