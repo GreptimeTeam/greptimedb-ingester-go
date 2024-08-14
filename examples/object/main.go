@@ -53,8 +53,15 @@ func (Monitor) TableName() string {
 func initData() []Monitor {
 	return []Monitor{
 		{
-			ID:          1,
 			Host:        "127.0.0.1",
+			Memory:      1,
+			Cpu:         1.3,
+			Temperature: -1,
+			Ts:          time.Now(),
+		},
+		{
+			ID:          1,
+			Host:        "127.0.0.2",
 			Memory:      1,
 			Cpu:         1.0,
 			Temperature: -1,
@@ -63,7 +70,7 @@ func initData() []Monitor {
 		},
 		{
 			ID:          2,
-			Host:        "127.0.0.2",
+			Host:        "127.0.0.3",
 			Memory:      2,
 			Cpu:         2.0,
 			Temperature: -2,
@@ -72,7 +79,7 @@ func initData() []Monitor {
 		},
 		{
 			ID:          3,
-			Host:        "127.0.0.3",
+			Host:        "127.0.0.4",
 			Memory:      3,
 			Cpu:         3.0,
 			Temperature: -3,
@@ -81,6 +88,7 @@ func initData() []Monitor {
 		},
 	}
 }
+
 func writeObject(data []Monitor) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
@@ -136,19 +144,19 @@ func main() {
 	// insert
 	writeObject(data)
 	// update
-	data[0].Cpu = 1.1
+	data[1].Cpu = 1.1
 	writeObject(data)
 	// delete
-	deleteObject(data[2:])
+	deleteObject(data[3:])
 
 	time.Sleep(time.Millisecond * 100)
 
 	data = initData()
 	// stream insert
 	streamWriteObject(data)
-	data[0].Cpu = 1.1
+	data[1].Cpu = 1.1
 	// stream update
 	streamWriteObject(data)
 	// stream delete
-	streamDeleteObject(data[2:])
+	streamDeleteObject(data[3:])
 }

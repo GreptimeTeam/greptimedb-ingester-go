@@ -180,7 +180,7 @@ func parseIntOrTimeValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value,
 
 func parseValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
 	val = reflect.Indirect(val)
-	if !val.IsValid() || val.IsZero() {
+	if !val.IsValid() {
 		return nil, nil
 	}
 
