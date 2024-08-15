@@ -51,12 +51,12 @@ func (r *Request) WithTables(tables ...*table.Table) *Request {
 	return r
 }
 
-func (r *Request) IsZero() bool {
-	return r.tables == nil || len(r.tables) == 0
+func (r *Request) IsNilTable() bool {
+	return r.tables == nil
 }
 
 func (r *Request) Build() (*gpb.GreptimeRequest, error) {
-	if r.IsZero() {
+	if r.IsNilTable() {
 		return nil, errs.ErrEmptyTable
 	}
 
