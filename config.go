@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"time"
 
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
+
 	"google.golang.org/grpc"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/options"
@@ -40,6 +43,10 @@ type Config struct {
 
 	tls     *options.TlsOption
 	options []grpc.DialOption
+
+	telemetry      *options.TelemetryOptions
+	meterProvider  metric.MeterProvider
+	tracerProvider trace.TracerProvider
 }
 
 // NewConfig helps to init Config with host only
@@ -48,6 +55,7 @@ func NewConfig(host string) *Config {
 		Host: host,
 		Port: 4001,
 
+		telemetry: options.NewTelemetryOptions(),
 		options: []grpc.DialOption{
 			options.NewUserAgentOption(version).Build(),
 		},
@@ -93,6 +101,36 @@ func (c *Config) WithInsecure(insecure bool) *Config {
 	return c
 }
 
+// WithMetricsEnabled enables/disables collection of SDK's metrics. Disabled by default.
+func (c *Config) WithMetricsEnabled(b bool) *Config {
+	c.telemetry.Metrics.Enabled = b
+	return c
+}
+
+// WithMeterProvider provides a MeterProvider for SDK.
+// If metrics colleciton is not enabled, then this option has no effect.
+// If metrics colleciton is enabled and this option is not provide
+// the global MeterProvider will be used.
+func (c *Config) WithMeterProvider(p metric.MeterProvider) *Config {
+	c.telemetry.Metrics.MeterProvider = p
+	return c
+}
+
+// WithTracesEnabled enables/disables collection of SDK's traces. Disabled by default.
+func (c *Config) WithTracesEnabled(b bool) *Config {
+	c.telemetry.Traces.Enabled = b
+	return c
+}
+
+// WithTraceProvider provides a TracerProvider for SDK.
+// If traces colleciton is not enabled, then this option has no effect.
+// If traces colleciton is enabled and this option is not provide
+// the global MeterProvider will be used.
+func (c *Config) WithTraceProvider(p trace.TracerProvider) *Config {
+	c.telemetry.Traces.TracerProvider = p
+	return c
+}
+
 // WithDialOption helps to specify the dial option
 // which has not been supported by ingester sdk yet.
 func (c *Config) WithDialOption(opt grpc.DialOption) *Config {
@@ -110,6 +148,6 @@ func (c *Config) build() []grpc.DialOption {
 		c.tls = &opt
 	}
 
-	c.options = append(c.options, c.tls.Build())
+	c.options = append(c.options, c.tls.Build(), c.telemetry.Build())
 	return c.options
 }
