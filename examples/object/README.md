@@ -19,7 +19,7 @@ Output:
 
 ## Query
 
-Your can using [MySQL Client](https://docs.greptime.com/user-guide/clients/mysql) to query the data from GreptimeDB.
+Your can using [MySQL Client](https://docs.greptime.com/user-guide/protocols/mysql) to query the data from GreptimeDB.
 
 ```shell
 $ mysql -h 127.0.0.1 -P 4002 public
