@@ -18,4 +18,4 @@ docker run --rm -p 4000-4003:4000-4003 \
 
 ## Query
 
-Your can using [MySQL Client](https://docs.greptime.com/user-guide/clients/mysql) to query the data from GreptimeDB.
+Your can using [MySQL Client](https://docs.greptime.com/user-guide/protocols/mysql) to query the data from GreptimeDB.
