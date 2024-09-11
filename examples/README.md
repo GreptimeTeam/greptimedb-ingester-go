@@ -15,6 +15,7 @@ docker run --rm -p 4000-4003:4000-4003 \
 
 - [table](table/README.md)
 - [object](object/README.md)
+- [healthcheck](healthcheck/README.md)
 
 ## Query
 

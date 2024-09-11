@@ -35,6 +35,8 @@ type Client struct {
 	client gpb.GreptimeDatabaseClient
 
 	stream gpb.GreptimeDatabase_HandleRequestsClient
+
+	healthCheckClient gpb.HealthCheckClient
 }
 
 // NewClient helps to create the greptimedb client, which will be responsible write data into GreptimeDB.
@@ -46,6 +48,17 @@ func NewClient(cfg *Config) (*Client, error) {
 
 	client := gpb.NewGreptimeDatabaseClient(conn)
 	return &Client{cfg: cfg, client: client}, nil
+}
+
+// NewHealthCheckClient helps to create the health check client, which will be responsible checking GreptimeDB health status.
+func NewHealthCheckClient(cfg *Config) (*Client, error) {
+	conn, err := grpc.Dial(cfg.endpoint(), cfg.build()...)
+	if err != nil {
+		return nil, err
+	}
+
+	client := gpb.NewHealthCheckClient(conn)
+	return &Client{cfg: cfg, healthCheckClient: client}, nil
 }
 
 // submit is to build request and send it to GreptimeDB.
@@ -283,4 +296,15 @@ func (c *Client) CloseStream(ctx context.Context) (*gpb.AffectedRows, error) {
 
 	c.stream = nil
 	return resp.GetAffectedRows(), nil
+}
+
+// HealthCheck will check GreptimeDB health status.
+func (c *Client) HealthCheck(ctx context.Context) (*gpb.HealthCheckResponse, error) {
+	req := &gpb.HealthCheckRequest{}
+	resp, err := c.healthCheckClient.HealthCheck(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
