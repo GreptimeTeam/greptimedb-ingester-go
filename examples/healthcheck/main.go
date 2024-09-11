@@ -36,9 +36,9 @@ func init() {
 }
 
 func main() {
-	resp, err := client.HealthCheck(context.TODO())
+	_, err := client.HealthCheck(context.Background())
 	if err != nil {
-		log.Println(err)
+		log.Println("failed to health check:", err)
 	}
-	log.Println("health check response:", resp)
+	log.Println("the greptimedb is health")
 }
