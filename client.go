@@ -47,18 +47,13 @@ func NewClient(cfg *Config) (*Client, error) {
 	}
 
 	client := gpb.NewGreptimeDatabaseClient(conn)
-	return &Client{cfg: cfg, client: client}, nil
-}
+	healthCheckClient := gpb.NewHealthCheckClient(conn)
 
-// NewHealthCheckClient helps to create the health check client, which will be responsible checking GreptimeDB health status.
-func NewHealthCheckClient(cfg *Config) (*Client, error) {
-	conn, err := grpc.Dial(cfg.endpoint(), cfg.build()...)
-	if err != nil {
-		return nil, err
-	}
-
-	client := gpb.NewHealthCheckClient(conn)
-	return &Client{cfg: cfg, healthCheckClient: client}, nil
+	return &Client{
+		cfg:               cfg,
+		client:            client,
+		healthCheckClient: healthCheckClient,
+	}, nil
 }
 
 // submit is to build request and send it to GreptimeDB.

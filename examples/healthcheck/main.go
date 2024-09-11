@@ -28,7 +28,7 @@ var (
 func init() {
 	cfg := greptime.NewConfig("127.0.0.1").WithDatabase("public")
 
-	cli_, err := greptime.NewHealthCheckClient(cfg)
+	cli_, err := greptime.NewClient(cfg)
 	if err != nil {
 		log.Panic(err)
 	}
