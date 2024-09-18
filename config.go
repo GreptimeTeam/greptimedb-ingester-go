@@ -44,9 +44,7 @@ type Config struct {
 	tls     *options.TlsOption
 	options []grpc.DialOption
 
-	telemetry      *options.TelemetryOptions
-	meterProvider  metric.MeterProvider
-	tracerProvider trace.TracerProvider
+	telemetry *options.TelemetryOptions
 }
 
 // NewConfig helps to init Config with host only
