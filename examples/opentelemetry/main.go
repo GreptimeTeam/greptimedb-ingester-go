@@ -127,8 +127,6 @@ func main() {
 // Initialize a gRPC connection to be used by both the tracer and meter
 // providers.
 func initConn() (*grpc.ClientConn, error) {
-	// It connects the OpenTelemetry Collector through local gRPC connection.
-	// You may replace `localhost:4317` with your endpoint.
 	conn, err := grpc.NewClient(tracingEndpoint,
 		// Note the use of insecure transport here. TLS is recommended in production.
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
