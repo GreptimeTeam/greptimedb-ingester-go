@@ -42,7 +42,15 @@ kubectl port-forward svc/jaeger-collector -n default 4317:4317 > jaeger.out &
 kubectl port-forward svc/jaeger-query -n default 16686:16686 > jaeger.out &
 ```
 
-## Running the Example
+## Example
+Enable opentelemetry in the configuration：
+```go
+cfg := greptime.NewConfig(host).WithDatabase(database).
+  WithTraceProvider(tracerProvider).WithTracesEnabled(true).
+  WithMeterProvider(meterProvider).WithMetricsEnabled(true)
+```
+
+Running the example:
 ```go
 go run main.go
 ```
