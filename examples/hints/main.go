@@ -49,7 +49,7 @@ func initData() []*table.Table {
 	time2 := time.Now()
 	time3 := time.Now()
 
-	itbl, err := table.New("monitor_table_with_hint")
+	itbl, err := table.New("monitor_table_with_hints")
 	if err != nil {
 		log.Println(err)
 		return nil

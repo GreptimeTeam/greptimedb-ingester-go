@@ -9,7 +9,7 @@ go run main.go
 Output:
 
 ```log
-2024/09/24 01:16:03 create table, name: 'monitor_table_with_hint'
+2024/09/24 01:16:03 create table, name: 'monitor_table_with_hints'
 2024/09/24 01:16:03 affected rows: 3
 ```
 
@@ -20,7 +20,7 @@ Your can using [MySQL Client](https://docs.greptime.com/user-guide/protocols/mys
 ```shell
 $ mysql -h 127.0.0.1 -P 4002 public
 
-mysql> select * from monitor_table_with_hint;
+mysql> select * from monitor_table_with_hints;
 +------+-------+-------------+----------------------------+
 | id   | host  | temperature | timestamp                  |
 +------+-------+-------------+----------------------------+
@@ -34,11 +34,11 @@ mysql> select * from monitor_table_with_hint;
 You can view hints using `show create table` command:
 
 ```mysql
-mysql> show create table monitor_table_with_hint;
+mysql> show create table monitor_table_with_hints;
 +------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Table                  | Create Table                                                                                                                                                                                                                                                                                                      |
 +------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| monitor_table_with_hint | CREATE TABLE IF NOT EXISTS `monitor_table_with_hint` (
+| monitor_table_with_hints | CREATE TABLE IF NOT EXISTS `monitor_table_with_hints` (
   `id` BIGINT NULL,
   `host` STRING NULL,
   `temperature` DOUBLE NULL,
