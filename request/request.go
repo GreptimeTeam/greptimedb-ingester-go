@@ -76,7 +76,9 @@ func (r *Request) Build() (*gpb.GreptimeRequest, error) {
 			insertReqs = append(insertReqs, req)
 		}
 		req := &gpb.GreptimeRequest_RowInserts{
-			RowInserts: &gpb.RowInsertRequests{Inserts: insertReqs},
+			RowInserts: &gpb.RowInsertRequests{
+				Inserts: insertReqs,
+			},
 		}
 		return &gpb.GreptimeRequest{
 			Header:  header,
@@ -93,7 +95,9 @@ func (r *Request) Build() (*gpb.GreptimeRequest, error) {
 		}
 
 		req := &gpb.GreptimeRequest_RowDeletes{
-			RowDeletes: &gpb.RowDeleteRequests{Deletes: deleteReqs},
+			RowDeletes: &gpb.RowDeleteRequests{
+				Deletes: deleteReqs,
+			},
 		}
 		return &gpb.GreptimeRequest{
 			Header:  header,
