@@ -21,101 +21,114 @@ import (
 
 	greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
 
-	"github.com/GreptimeTeam/greptimedb-ingester-go/pkg/hint"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/pkg/hints"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
 const (
 	INSERT = 0
+
+	// The GreptimeDB address.
+	host = "127.0.0.1"
+
+	// The database name.
+	database = "public"
 )
 
-var (
+type client struct {
 	client *greptime.Client
-)
-
-func init() {
-	cfg := greptime.NewConfig("127.0.0.1").WithDatabase("public")
-
-	cli_, err := greptime.NewClient(cfg)
-	if err != nil {
-		log.Panic(err)
-	}
-	client = cli_
 }
 
-func initData() []*table.Table {
+func newClient() (*client, error) {
+	cfg := greptime.NewConfig(host).WithDatabase(database)
+	gtClient, err := greptime.NewClient(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &client{
+		client: gtClient,
+	}
+
+	return c, nil
+}
+
+func initData() ([]*table.Table, error) {
 	time1 := time.Now()
 	time2 := time.Now()
 	time3 := time.Now()
 
 	itbl, err := table.New("monitor_table_with_hints")
 	if err != nil {
-		log.Println(err)
-		return nil
+		return nil, err
 	}
 	// add column at first. This is to define the schema of the table.
 	if err := itbl.AddTagColumn("id", types.INT64); err != nil {
-		log.Println(err)
-		return nil
+		return nil, err
 	}
 	if err := itbl.AddFieldColumn("host", types.STRING); err != nil {
-		log.Println(err)
-		return nil
+		return nil, err
 	}
 	if err := itbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
-		log.Println(err)
-		return nil
+		return nil, err
 	}
 	if err := itbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
-		log.Println(err)
-		return nil
+		return nil, err
 	}
 
 	if err := itbl.AddRow(1, "hello", 1.1, time1); err != nil {
-		log.Println(err)
-		return nil
+		return nil, err
 	}
 	if err := itbl.AddRow(2, "hello", 2.2, time2); err != nil {
-		log.Println(err)
-		return nil
+		return nil, err
 	}
 	if err := itbl.AddRow(3, "hello", 3.3, time3); err != nil {
-		log.Println(err)
-		return nil
+		return nil, err
 	}
 
-	return []*table.Table{itbl}
+	return []*table.Table{itbl}, nil
 }
 
-func write(data *table.Table) {
-	var hints []hint.Hint
-	hints = append(hints,
-		hint.Hint{Key: "ttl", Value: "3d"},
-		hint.Hint{Key: "merge_mode", Value: "last_non_null"},
-		hint.Hint{Key: "append_mode", Value: "false"},
+func (c client) write(data *table.Table) error {
+	var h []hints.Hint
+	h = append(h,
+		hints.Hint{Key: "ttl", Value: "3d"},
+		hints.Hint{Key: "merge_mode", Value: "last_non_null"},
+		hints.Hint{Key: "append_mode", Value: "false"},
 	)
 
-	ctx := hint.CreateContextWithHints(hints)
+	ctx := hints.CreateContextWithHints(h)
 	ctx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
-	resp, err := client.Write(ctx, data)
+	resp, err := c.client.Write(ctx, data)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 	tableName, err := data.GetName()
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
+
 	log.Printf("create table, name: '%s'", tableName)
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
+	return nil
 }
 
 func main() {
-	data := initData()
+	data, err := initData()
+	if err != nil {
+		log.Fatalf("failed to init data: %v:", err)
+	}
 
-	write(data[INSERT])
+	c, err := newClient()
+	if err != nil {
+		log.Fatalf("failed to new client: %v:", err)
+	}
+
+	err = c.write(data[INSERT])
+	if err != nil {
+		log.Fatalf("failed to write data: %v:", err)
+	}
 }
