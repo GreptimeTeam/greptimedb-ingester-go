@@ -39,6 +39,7 @@ func main() {
 	_, err := client.HealthCheck(context.Background())
 	if err != nil {
 		log.Println("failed to health check:", err)
+		return
 	}
 	log.Println("the greptimedb is health")
 }
