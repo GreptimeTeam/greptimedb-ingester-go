@@ -43,15 +43,13 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
-var (
+const (
 	metricsBindAddr = ":2233"
 
 	// It connects the OpenTelemetry Collector through local gRPC connection.
 	// You may replace `localhost:4317` with your endpoint.
 	tracingEndpoint = "localhost:4317"
-)
 
-var (
 	// The GreptimeDB address.
 	host = "127.0.0.1"
 
@@ -63,21 +61,21 @@ type client struct {
 	client *greptime.Client
 }
 
-func newClient(tracerProvider trace.TracerProvider, meterProvider *metric.MeterProvider) *client {
+func newClient(tracerProvider trace.TracerProvider, meterProvider *metric.MeterProvider) (*client, error) {
 	cfg := greptime.NewConfig(host).WithDatabase(database).
 		WithTraceProvider(tracerProvider).WithTracesEnabled(true).
 		WithMeterProvider(meterProvider).WithMetricsEnabled(true)
 
 	gtClient, err := greptime.NewClient(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	c := &client{
 		client: gtClient,
 	}
 
-	return c
+	return c, nil
 }
 
 func main() {
@@ -115,18 +113,25 @@ func main() {
 		metric.WithReader(exporter),
 	)
 
-	err = initMeterProvider(ctx, res, conn)
-	if err != nil {
+	if err = initMeterProvider(ctx, res, conn); err != nil {
 		log.Fatal(err)
 	}
 
 	// Start the prometheus HTTP server and pass the exporter Collector to it
 	go serveMetrics()
 
-	c := newClient(tracerProvider, meterProvider)
+	c, err := newClient(tracerProvider, meterProvider)
+	if err != nil {
+		log.Fatalf("failed to new client: %v:", err)
+	}
 
-	data := initData()
-	c.write(data[1])
+	data, err := initData()
+	if err != nil {
+		log.Fatalf("failed to init data: %v:", err)
+	}
+	if err = c.write(data[1]); err != nil {
+		log.Fatalf("failed to write data: %v:", err)
+	}
 
 	log.Printf("Sleep 30s...")
 	time.Sleep(30 * time.Second)
@@ -193,100 +198,99 @@ func serveMetrics() {
 	http.Handle("/metrics", promhttp.Handler())
 	err := http.ListenAndServe(metricsBindAddr, nil) //nolint:gosec // Ignoring G114: Use of net/http serve function that has no support for setting timeouts.
 	if err != nil {
-		fmt.Printf("error serving http: %v", err)
-		return
+		log.Fatalf("error serving http: %v", err)
 	}
 }
 
-func initData() []*table.Table {
-
+func initData() ([]*table.Table, error) {
 	time1 := time.Now()
 	time2 := time.Now()
 	time3 := time.Now()
 
 	itbl, err := table.New("monitors_with_schema")
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	// add column at first. This is to define the schema of the table.
 	if err := itbl.AddTagColumn("id", types.INT64); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := itbl.AddFieldColumn("host", types.STRING); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := itbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := itbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	if err := itbl.AddRow(1, "hello", 1.1, time1); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := itbl.AddRow(2, "hello", 2.2, time2); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := itbl.AddRow(3, "hello", 3.3, time3); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	utbl, err := table.New("monitors_with_schema")
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	// add column at first. This is to define the schema of the table.
 	if err := utbl.AddTagColumn("id", types.INT64); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := utbl.AddFieldColumn("host", types.STRING); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := utbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := utbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	if err := utbl.AddRow(1, "hello", 1.2, time1); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	dtbl, err := table.New("monitors_with_schema")
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	// add column at first. This is to define the schema of the table.
 	if err := dtbl.AddTagColumn("id", types.INT64); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := dtbl.AddFieldColumn("host", types.STRING); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := dtbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	if err := dtbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	if err := dtbl.AddRow(3, "hello", 3.3, time3); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
-	return []*table.Table{itbl, utbl, dtbl}
+	return []*table.Table{itbl, utbl, dtbl}, nil
 }
 
-func (c client) write(data *table.Table) {
+func (c client) write(data *table.Table) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	resp, err := c.client.Write(ctx, data)
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
+	return nil
 }
