@@ -44,19 +44,41 @@ import (
 )
 
 var (
-	client      *greptime.Client
-	serviceName = semconv.ServiceNameKey.String("test-otel")
+	metricsBindAddr = ":2233"
 
 	// It connects the OpenTelemetry Collector through local gRPC connection.
 	// You may replace `localhost:4317` with your endpoint.
 	tracingEndpoint = "localhost:4317"
+)
 
+var (
 	// The GreptimeDB address.
 	host = "127.0.0.1"
 
 	// The database name.
 	database = "public"
 )
+
+type client struct {
+	client *greptime.Client
+}
+
+func newClient(tracerProvider trace.TracerProvider, meterProvider *metric.MeterProvider) *client {
+	cfg := greptime.NewConfig(host).WithDatabase(database).
+		WithTraceProvider(tracerProvider).WithTracesEnabled(true).
+		WithMeterProvider(meterProvider).WithMetricsEnabled(true)
+
+	gtClient, err := greptime.NewClient(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	c := &client{
+		client: gtClient,
+	}
+
+	return c
+}
 
 func main() {
 	log.Printf("Waiting for connection...")
@@ -67,9 +89,9 @@ func main() {
 	conn, err := initConn()
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 
+	serviceName := semconv.ServiceNameKey.String("test-otel")
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			// The service name used to display traces in backends
@@ -78,19 +100,16 @@ func main() {
 	)
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 
 	tracerProvider, err := initTracerProvider(ctx, res, conn)
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 
 	exporter, err := otelprom.New(otelprom.WithNamespace("greptime"))
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 	meterProvider := metric.NewMeterProvider(
 		metric.WithReader(exporter),
@@ -99,25 +118,15 @@ func main() {
 	err = initMeterProvider(ctx, res, conn)
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 
 	// Start the prometheus HTTP server and pass the exporter Collector to it
 	go serveMetrics()
 
-	cfg := greptime.NewConfig(host).WithDatabase(database).
-		WithTraceProvider(tracerProvider).WithTracesEnabled(true).
-		WithMeterProvider(meterProvider).WithMetricsEnabled(true)
-
-	cli_, err := greptime.NewClient(cfg)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	client = cli_
+	c := newClient(tracerProvider, meterProvider)
 
 	data := initData()
-	write(data[1])
+	c.write(data[1])
 
 	log.Printf("Sleep 30s...")
 	time.Sleep(30 * time.Second)
@@ -180,9 +189,9 @@ func initMeterProvider(ctx context.Context, res *resource.Resource, conn *grpc.C
 }
 
 func serveMetrics() {
-	log.Printf("serving metrics at localhost:2233/metrics")
+	log.Printf("serving metrics at localhost%s/metrics", metricsBindAddr)
 	http.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(":2233", nil) //nolint:gosec // Ignoring G114: Use of net/http serve function that has no support for setting timeouts.
+	err := http.ListenAndServe(metricsBindAddr, nil) //nolint:gosec // Ignoring G114: Use of net/http serve function that has no support for setting timeouts.
 	if err != nil {
 		fmt.Printf("error serving http: %v", err)
 		return
@@ -272,10 +281,10 @@ func initData() []*table.Table {
 	return []*table.Table{itbl, utbl, dtbl}
 }
 
-func write(data *table.Table) {
+func (c client) write(data *table.Table) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	resp, err := client.Write(ctx, data)
+	resp, err := c.client.Write(ctx, data)
 	if err != nil {
 		log.Println(err)
 	}
