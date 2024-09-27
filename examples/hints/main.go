@@ -27,8 +27,6 @@ import (
 )
 
 const (
-	INSERT = 0
-
 	// The GreptimeDB address.
 	host = "127.0.0.1"
 
@@ -54,7 +52,7 @@ func newClient() (*client, error) {
 	return c, nil
 }
 
-func initData() ([]*table.Table, error) {
+func initData() (*table.Table, error) {
 	time1 := time.Now()
 	time2 := time.Now()
 	time3 := time.Now()
@@ -87,7 +85,7 @@ func initData() ([]*table.Table, error) {
 		return nil, err
 	}
 
-	return []*table.Table{itbl}, nil
+	return itbl, nil
 }
 
 func (c client) write(data *table.Table) error {
@@ -135,7 +133,7 @@ func main() {
 		log.Fatalf("failed to new client: %v:", err)
 	}
 
-	if err = c.write(data[INSERT]); err != nil {
+	if err = c.write(data); err != nil {
 		log.Fatalf("failed to write data: %v:", err)
 	}
 }
