@@ -34,7 +34,7 @@ type Option func(ctx context.Context) context.Context
 func New(parent context.Context, opts ...Option) context.Context {
 	ctx := parent
 	for _, opt := range opts {
-		ctx = opt(parent)
+		ctx = opt(ctx)
 	}
 	return ctx
 }
