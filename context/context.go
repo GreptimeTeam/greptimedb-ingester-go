@@ -29,11 +29,22 @@ type Hint struct {
 	Value string
 }
 
-func CreateContextWithHints(hints []Hint) context.Context {
-	md := metadata.New(nil)
-	for _, hint := range hints {
-		md.Append(hintPrefix+hint.Key, hint.Value)
+type Option func(ctx context.Context) context.Context
+
+func New(parent context.Context, opts ...Option) context.Context {
+	ctx := parent
+	for _, opt := range opts {
+		ctx = opt(parent)
 	}
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	return ctx
+}
+
+func WithHints(hints []*Hint) Option {
+	return func(ctx context.Context) context.Context {
+		md := metadata.New(nil)
+		for _, hint := range hints {
+			md.Append(hintPrefix+hint.Key, hint.Value)
+		}
+		return metadata.NewOutgoingContext(ctx, md)
+	}
 }

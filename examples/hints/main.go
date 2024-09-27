@@ -21,7 +21,7 @@ import (
 
 	greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
 
-	ingestercontext "github.com/GreptimeTeam/greptimedb-ingester-go/context"
+	ingesterContext "github.com/GreptimeTeam/greptimedb-ingester-go/context"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
@@ -91,21 +91,29 @@ func initData() ([]*table.Table, error) {
 }
 
 func (c client) write(data *table.Table) error {
-	var hints []ingestercontext.Hint
-	hints = append(hints,
-		ingestercontext.Hint{Key: "ttl", Value: "3d"},
-		ingestercontext.Hint{Key: "merge_mode", Value: "last_non_null"},
-		ingestercontext.Hint{Key: "append_mode", Value: "false"},
-	)
+	hints := []*ingesterContext.Hint{
+		{
+			Key:   "ttl",
+			Value: "3d",
+		},
+		{
+			Key:   "merge_mode",
+			Value: "last_non_null",
+		},
+		{
+			Key:   "append_mode",
+			Value: "false",
+		},
+	}
 
-	ctx := ingestercontext.CreateContextWithHints(hints)
-	ctx, cancel := context.WithTimeout(ctx, time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	resp, err := c.client.Write(ctx, data)
+	resp, err := c.client.Write(ingesterContext.New(ctx, ingesterContext.WithHints(hints)), data)
 	if err != nil {
 		return err
 	}
+
 	tableName, err := data.GetName()
 	if err != nil {
 		return err
