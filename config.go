@@ -107,7 +107,7 @@ func (c *Config) WithMetricsEnabled(b bool) *Config {
 
 // WithMeterProvider provides a MeterProvider for SDK.
 // If metrics colleciton is not enabled, then this option has no effect.
-// If metrics colleciton is enabled and this option is not provide
+// If metrics colleciton is enabled and this option is not provide.
 // the global MeterProvider will be used.
 func (c *Config) WithMeterProvider(p metric.MeterProvider) *Config {
 	c.telemetry.Metrics.MeterProvider = p
@@ -122,7 +122,7 @@ func (c *Config) WithTracesEnabled(b bool) *Config {
 
 // WithTraceProvider provides a TracerProvider for SDK.
 // If traces colleciton is not enabled, then this option has no effect.
-// If traces colleciton is enabled and this option is not provide
+// If traces colleciton is enabled and this option is not provide.
 // the global MeterProvider will be used.
 func (c *Config) WithTraceProvider(p trace.TracerProvider) *Config {
 	c.telemetry.Traces.TracerProvider = p
