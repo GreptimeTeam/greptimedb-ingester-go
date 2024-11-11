@@ -85,6 +85,8 @@ const (
 	// INTERVAL_MONTH_DAY_NANO ColumnType = 25
 	// DECIMAL128              ColumnType = 30
 
+	JSON ColumnType = 31
+
 	// the following types are not from protocol buffer
 	INT       ColumnType = 101
 	UINT      ColumnType = 102
@@ -146,6 +148,8 @@ func (type_ ColumnType) String() string {
 		return "TIMESTAMP_MICROSECOND"
 	case TIMESTAMP_NANOSECOND:
 		return "TIMESTAMP_NANOSECOND"
+	case JSON:
+		return "JSON"
 	default:
 		return "UNKNOWN"
 	}
@@ -193,6 +197,8 @@ func ParseColumnType(type_, precision string) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_TIMESTAMP_MICROSECOND, nil
 	case TIMESTAMP_NANOSECOND.String():
 		return gpb.ColumnDataType_TIMESTAMP_NANOSECOND, nil
+	case JSON.String():
+		return gpb.ColumnDataType_JSON, nil
 	default:
 		return 0, fmt.Errorf("parse: unsupported column type %q", type_)
 	}
@@ -238,6 +244,8 @@ func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_TIMESTAMP_MICROSECOND, nil
 	case TIMESTAMP_NANOSECOND:
 		return gpb.ColumnDataType_TIMESTAMP_NANOSECOND, nil
+	case JSON:
+		return gpb.ColumnDataType_JSON, nil
 	default:
 		return 0, fmt.Errorf("convert: unsupported column type %q", type_.String())
 	}

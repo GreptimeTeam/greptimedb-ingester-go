@@ -18,6 +18,7 @@ docker run --rm -p 4000-4003:4000-4003 \
 - [healthcheck](healthcheck/README.md)
 - [opentelemetry](opentelemetry/README.md)
 - [hints](hints/README.md)
+- [jsondata](jsondata/README.md)
 
 ## Query
 
