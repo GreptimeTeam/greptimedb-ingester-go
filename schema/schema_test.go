@@ -332,6 +332,7 @@ func TestParseWithValues(t *testing.T) {
 	BOOLEAN := true
 	BINARY := []byte{1, 2, 3}
 	STRING := "string"
+	JSON := `{"key1":"value1","key2":10}`
 
 	TIMESTAMP := time.Now()
 	DATE_INT := TIMESTAMP.Unix() / int64(cell.ONE_DAY_IN_SECONDS)
@@ -342,7 +343,7 @@ func TestParseWithValues(t *testing.T) {
 	TIMESTAMP_NANOSECOND_INT := TIMESTAMP.UnixNano()
 
 	assertSchema := func(cols []*gpb.ColumnSchema) {
-		assert.Len(t, cols, 54)
+		assert.Len(t, cols, 56)
 
 		assert.EqualValues(t, newColumnSchema("int_column", gpb.SemanticType_TAG, gpb.ColumnDataType_INT64), cols[0])
 		assert.EqualValues(t, newColumnSchema("int8_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT8), cols[1])
@@ -371,8 +372,9 @@ func TestParseWithValues(t *testing.T) {
 		assert.EqualValues(t, newColumnSchema("timestamp_millisecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), cols[24])
 		assert.EqualValues(t, newColumnSchema("timestamp_microsecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), cols[25])
 		assert.EqualValues(t, newColumnSchema("timestamp_nanosecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), cols[26])
+		assert.EqualValues(t, newColumnSchema("json_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_JSON), cols[27])
 
-		offset := 27
+		offset := 28
 		assert.EqualValues(t, newColumnSchema("ptr_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT64), cols[0+offset])
 		assert.EqualValues(t, newColumnSchema("ptr_int8_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT8), cols[1+offset])
 		assert.EqualValues(t, newColumnSchema("ptr_int16_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT16), cols[2+offset])
@@ -400,11 +402,12 @@ func TestParseWithValues(t *testing.T) {
 		assert.EqualValues(t, newColumnSchema("ptr_timestamp_millisecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), cols[24+offset])
 		assert.EqualValues(t, newColumnSchema("ptr_timestamp_microsecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), cols[25+offset])
 		assert.EqualValues(t, newColumnSchema("ptr_timestamp_nanosecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), cols[26+offset])
+		assert.EqualValues(t, newColumnSchema("ptr_json_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_JSON), cols[27+offset])
 	}
 
 	assertValue := func(row *gpb.Row) {
 		vals := row.Values
-		assert.Len(t, vals, 54)
+		assert.Len(t, vals, 56)
 
 		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I64Value{I64Value: int64(INT)}}, vals[0])
 		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I8Value{I8Value: int32(INT8)}}, vals[1])
@@ -433,8 +436,9 @@ func TestParseWithValues(t *testing.T) {
 		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMillisecondValue{TimestampMillisecondValue: TIMESTAMP.UnixMilli()}}, vals[24])
 		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMicrosecondValue{TimestampMicrosecondValue: TIMESTAMP.UnixMicro()}}, vals[25])
 		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampNanosecondValue{TimestampNanosecondValue: TIMESTAMP.UnixNano()}}, vals[26])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: JSON}}, vals[27])
 
-		offset := 27
+		offset := 28
 
 		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I64Value{I64Value: int64(INT)}}, vals[0+offset])
 		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I8Value{I8Value: int32(INT8)}}, vals[1+offset])
@@ -463,6 +467,7 @@ func TestParseWithValues(t *testing.T) {
 		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMillisecondValue{TimestampMillisecondValue: TIMESTAMP.UnixMilli()}}, vals[24+offset])
 		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMicrosecondValue{TimestampMicrosecondValue: TIMESTAMP.UnixMicro()}}, vals[25+offset])
 		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampNanosecondValue{TimestampNanosecondValue: TIMESTAMP.UnixNano()}}, vals[26+offset])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: JSON}}, vals[27+offset])
 	}
 
 	type Monitor struct {
@@ -493,6 +498,7 @@ func TestParseWithValues(t *testing.T) {
 		TIMESTAMP_MILLISECOND_INT int64     `greptime:"field;column:timestamp_millisecond_int_column;type:timestamp;precision:millisecond"`
 		TIMESTAMP_MICROSECOND_INT int64     `greptime:"field;column:timestamp_microsecond_int_column;type:timestamp;precision:microsecond"`
 		TIMESTAMP_NANOSECOND_INT  int64     `greptime:"field;column:timestamp_nanosecond_int_column;type:timestamp;precision:nanosecond"`
+		JSON                      string    `greptime:"field;column:json_column;type:json"`
 
 		PtrINT                       *int       `greptime:"field;column:ptr_int_column;type:int"`
 		PtrINT8                      *int8      `greptime:"field;column:ptr_int8_column;type:int8"`
@@ -521,6 +527,7 @@ func TestParseWithValues(t *testing.T) {
 		PtrTIMESTAMP_MILLISECOND_INT *int64     `greptime:"field;column:ptr_timestamp_millisecond_int_column;type:timestamp;precision:millisecond"`
 		PtrTIMESTAMP_MICROSECOND_INT *int64     `greptime:"field;column:ptr_timestamp_microsecond_int_column;type:timestamp;precision:microsecond"`
 		PtrTIMESTAMP_NANOSECOND_INT  *int64     `greptime:"field;column:ptr_timestamp_nanosecond_int_column;type:timestamp;precision:nanosecond"`
+		PtrJSON                      *string    `greptime:"field;column:ptr_json_column;type:json"`
 
 		privateField string // will be ignored
 	}
@@ -553,6 +560,7 @@ func TestParseWithValues(t *testing.T) {
 		TIMESTAMP_MILLISECOND_INT: TIMESTAMP_MILLISECOND_INT,
 		TIMESTAMP_MICROSECOND_INT: TIMESTAMP_MICROSECOND_INT,
 		TIMESTAMP_NANOSECOND_INT:  TIMESTAMP_NANOSECOND_INT,
+		JSON:                      JSON,
 
 		PtrINT:                       &INT,
 		PtrINT8:                      &INT8,
@@ -581,6 +589,7 @@ func TestParseWithValues(t *testing.T) {
 		PtrTIMESTAMP_MILLISECOND_INT: &TIMESTAMP_MILLISECOND_INT,
 		PtrTIMESTAMP_MICROSECOND_INT: &TIMESTAMP_MICROSECOND_INT,
 		PtrTIMESTAMP_NANOSECOND_INT:  &TIMESTAMP_NANOSECOND_INT,
+		PtrJSON:                      &JSON,
 
 		privateField: "private",
 	}
@@ -715,6 +724,7 @@ func TestParseWithNilValues(t *testing.T) {
 		PtrTIMESTAMP_MILLISECOND_INT *int64     `greptime:"field;column:ptr_timestamp_millisecond_int_column;type:timestamp;precision:millisecond"`
 		PtrTIMESTAMP_MICROSECOND_INT *int64     `greptime:"field;column:ptr_timestamp_microsecond_int_column;type:timestamp;precision:microsecond"`
 		PtrTIMESTAMP_NANOSECOND_INT  *int64     `greptime:"field;column:ptr_timestamp_nanosecond_int_column;type:timestamp;precision:nanosecond"`
+		PtrJSON                      *string    `greptime:"field;column:ptr_json_column;type:json"`
 	}
 
 	monitor := Monitor{
@@ -745,6 +755,7 @@ func TestParseWithNilValues(t *testing.T) {
 		PtrTIMESTAMP_MILLISECOND_INT: nil,
 		PtrTIMESTAMP_MICROSECOND_INT: nil,
 		PtrTIMESTAMP_NANOSECOND_INT:  nil,
+		PtrJSON:                      nil,
 	}
 
 	{
@@ -785,10 +796,11 @@ func TestParseWithNilValues(t *testing.T) {
 		assert.EqualValues(t, newColumnSchema("ptr_timestamp_millisecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), cols[24])
 		assert.EqualValues(t, newColumnSchema("ptr_timestamp_microsecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), cols[25])
 		assert.EqualValues(t, newColumnSchema("ptr_timestamp_nanosecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), cols[26])
+		assert.EqualValues(t, newColumnSchema("ptr_json_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_JSON), cols[27])
 
 		assert.Len(t, rows.Rows, 1)
 		vals := rows.Rows[0].Values
-		assert.Len(t, vals, 27)
+		assert.Len(t, vals, 28)
 		for _, val := range vals {
 			assert.Nil(t, val)
 		}
