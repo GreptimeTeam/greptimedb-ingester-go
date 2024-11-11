@@ -767,7 +767,7 @@ func TestParseWithNilValues(t *testing.T) {
 		assert.NotNil(t, rows)
 
 		cols := rows.Schema
-		assert.Len(t, cols, 27)
+		assert.Len(t, cols, 28)
 
 		assert.EqualValues(t, newColumnSchema("ptr_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT64), cols[0])
 		assert.EqualValues(t, newColumnSchema("ptr_int8_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT8), cols[1])
