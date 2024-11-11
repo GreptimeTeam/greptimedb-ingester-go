@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -82,20 +81,18 @@ func initData() ([]*table.Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	//jsonData := `{"key1":"value1","key2":10}`
-	//jsonStr2 := `{"name":"GreptimeDB","open_source":true}`
+
 	p := Person{
 		Name:      "Jain Doe",
 		Age:       25,
 		IsStudent: false,
 		Courses:   []string{"math", "history", "chemistry"},
 	}
-
 	jsonData, err := json.Marshal(p)
 	if err != nil {
-		fmt.Println("Error:", err)
 		return nil, err
 	}
+
 	// add column at first. This is to define the schema of the table.
 	if err := itbl.AddFieldColumn("my_json", types.JSON); err != nil {
 		return nil, err

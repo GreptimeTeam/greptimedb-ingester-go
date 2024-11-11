@@ -189,7 +189,7 @@ func newMysql() *Mysql {
 
 func init() {
 	repo := "greptime/greptimedb"
-	tag := "v0.7.0"
+	tag := "v0.9.5"
 
 	pool, err := dockertest.NewPool("")
 	if err != nil {
