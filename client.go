@@ -17,9 +17,9 @@ package greptime
 import (
 	"context"
 
+	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"google.golang.org/grpc"
 
-	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/schema"
