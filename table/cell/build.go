@@ -490,3 +490,17 @@ func BuildTimeNanosecond(v any) (*gpb.Value, error) {
 
 	return &gpb.Value{ValueData: &gpb.Value_TimeNanosecondValue{TimeNanosecondValue: val}}, nil
 }
+
+func BuildJSON(v any) (*gpb.Value, error) {
+	var val string
+	switch t := v.(type) {
+	case string:
+		val = t
+	case *string:
+		val = *t
+	default:
+		return nil, fmt.Errorf(formatter+"string", t, v)
+	}
+
+	return &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: val}}, nil
+}

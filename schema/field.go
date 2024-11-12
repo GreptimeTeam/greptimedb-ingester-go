@@ -253,9 +253,15 @@ func parseValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
 	// TODO(yuanbohan): support decimal 128
 	case gpb.ColumnDataType_DECIMAL128:
 		return nil, fmt.Errorf("DECIMAL 128 not supported for %#v", val)
+
+	case gpb.ColumnDataType_JSON:
+		if val.Kind() != reflect.String {
+			return nil, fmt.Errorf("%#v is not compatible with String", val)
+		}
+		return cell.New(val.String(), typ).Build()
+
 	default:
 		return nil, fmt.Errorf("unknown column data type: %v", typ)
-
 	}
 }
 

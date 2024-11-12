@@ -85,6 +85,9 @@ func (c Cell) Build() (*gpb.Value, error) {
 	// TODO(yuanbohan): support decimal 128
 	case gpb.ColumnDataType_DECIMAL128:
 		return nil, fmt.Errorf("DECIMAL 128 not supported for %#v", c.Val)
+
+	case gpb.ColumnDataType_JSON:
+		return BuildJSON(c.Val)
 	default:
 		return nil, fmt.Errorf("unknown column data type: %v", c.DataType)
 	}
