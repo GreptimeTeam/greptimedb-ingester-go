@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"time"
 
@@ -88,10 +87,6 @@ func initData() ([]*table.Table, error) {
 		IsStudent: false,
 		Courses:   []string{"math", "history", "chemistry"},
 	}
-	jsonData, err := json.Marshal(p)
-	if err != nil {
-		return nil, err
-	}
 
 	// add column at first. This is to define the schema of the table.
 	if err := itbl.AddFieldColumn("my_json", types.JSON); err != nil {
@@ -100,7 +95,7 @@ func initData() ([]*table.Table, error) {
 	if err := itbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
 		return nil, err
 	}
-	if err := itbl.AddRow(string(jsonData), time1); err != nil {
+	if err := itbl.AddRow(p, time1); err != nil {
 		return nil, err
 	}
 
