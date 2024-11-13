@@ -88,7 +88,7 @@ func initData() (*table.Table, error) {
 	return itbl, nil
 }
 
-func (c client) write(data *table.Table) error {
+func (c *client) write(data *table.Table) error {
 	hints := []*ingesterContext.Hint{
 		{
 			Key:   "ttl",

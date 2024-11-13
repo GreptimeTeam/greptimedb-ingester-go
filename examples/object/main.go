@@ -22,18 +22,30 @@ import (
 	greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
 )
 
-var (
-	client *greptime.Client
+const (
+	// The GreptimeDB address.
+	host = "127.0.0.1"
+
+	// The database name.
+	database = "public"
 )
 
-func init() {
-	cfg := greptime.NewConfig("127.0.0.1").WithDatabase("public")
+type client struct {
+	client *greptime.Client
+}
 
-	cli_, err := greptime.NewClient(cfg)
+func newClient() (*client, error) {
+	cfg := greptime.NewConfig(host).WithDatabase(database)
+	gtClient, err := greptime.NewClient(cfg)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
-	client = cli_
+
+	c := &client{
+		client: gtClient,
+	}
+
+	return c, nil
 }
 
 type Monitor struct {
@@ -89,50 +101,50 @@ func initData() []Monitor {
 	}
 }
 
-func writeObject(data []Monitor) {
+func (c *client) writeObject(data []Monitor) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	resp, err := client.WriteObject(ctx, data)
+	resp, err := c.client.WriteObject(ctx, data)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
 
-func deleteObject(data []Monitor) {
+func (c *client) deleteObject(data []Monitor) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	resp, err := client.DeleteObject(ctx, data)
+	resp, err := c.client.DeleteObject(ctx, data)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
 
-func streamWriteObject(data []Monitor) {
+func (c *client) streamWriteObject(data []Monitor) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	if err := client.StreamWriteObject(ctx, data); err != nil {
+	if err := c.client.StreamWriteObject(ctx, data); err != nil {
 		log.Println(err)
 	}
-	affected, err := client.CloseStream(ctx)
+	affected, err := c.client.CloseStream(ctx)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Printf("affected rows: %d\n", affected.GetValue())
 }
 
-func streamDeleteObject(data []Monitor) {
+func (c *client) streamDeleteObject(data []Monitor) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	if err := client.StreamDeleteObject(ctx, data); err != nil {
+	if err := c.client.StreamDeleteObject(ctx, data); err != nil {
 		log.Println(err)
 	}
-	affected, err := client.CloseStream(ctx)
+	affected, err := c.client.CloseStream(ctx)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -140,23 +152,28 @@ func streamDeleteObject(data []Monitor) {
 }
 
 func main() {
+	c, err := newClient()
+	if err != nil {
+		log.Fatalf("failed to new client: %v:", err)
+	}
+
 	data := initData()
 	// insert
-	writeObject(data)
+	c.writeObject(data)
 	// update
 	data[1].Cpu = 1.1
-	writeObject(data)
+	c.writeObject(data)
 	// delete
-	deleteObject(data[3:])
+	c.deleteObject(data[3:])
 
 	time.Sleep(time.Millisecond * 100)
 
 	data = initData()
 	// stream insert
-	streamWriteObject(data)
+	c.streamWriteObject(data)
 	data[1].Cpu = 1.1
 	// stream update
-	streamWriteObject(data)
+	c.streamWriteObject(data)
 	// stream delete
-	streamDeleteObject(data[3:])
+	c.streamDeleteObject(data[3:])
 }

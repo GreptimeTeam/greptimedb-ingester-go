@@ -68,12 +68,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to init data: %v:", err)
 	}
-	if err = c.write(data[0]); err != nil {
+	if err = c.write(data); err != nil {
 		log.Fatalf("failed to write data: %v:", err)
 	}
 }
 
-func initData() ([]*table.Table, error) {
+func initData() (*table.Table, error) {
 	time1 := time.Now()
 
 	itbl, err := table.New("json_data")
@@ -99,10 +99,10 @@ func initData() ([]*table.Table, error) {
 		return nil, err
 	}
 
-	return []*table.Table{itbl}, nil
+	return itbl, nil
 }
 
-func (c client) write(data *table.Table) error {
+func (c *client) write(data *table.Table) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	resp, err := c.client.Write(ctx, data)
