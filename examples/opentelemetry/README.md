@@ -22,7 +22,7 @@ docker run --rm --name jaeger \
 Write the [Prometheus](https://prometheus.io/) configuration file and save it as **prometheus.yml**:
 ```
 global:
-  scrape_interval: 10s 
+  scrape_interval: 5s 
 
 scrape_configs:
   - job_name: greptimedb-ingester-go

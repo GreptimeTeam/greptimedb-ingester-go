@@ -207,7 +207,7 @@ func initData() ([]*table.Table, error) {
 	time2 := time.Now()
 	time3 := time.Now()
 
-	itbl, err := table.New("monitors_with_schema")
+	itbl, err := table.New("monitors_with_otel")
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +235,7 @@ func initData() ([]*table.Table, error) {
 		return nil, err
 	}
 
-	utbl, err := table.New("monitors_with_schema")
+	utbl, err := table.New("monitors_with_otel")
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +258,7 @@ func initData() ([]*table.Table, error) {
 		return nil, err
 	}
 
-	dtbl, err := table.New("monitors_with_schema")
+	dtbl, err := table.New("monitors_with_otel")
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +284,7 @@ func initData() ([]*table.Table, error) {
 	return []*table.Table{itbl, utbl, dtbl}, nil
 }
 
-func (c client) write(data *table.Table) error {
+func (c *client) write(data *table.Table) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	resp, err := c.client.Write(ctx, data)
