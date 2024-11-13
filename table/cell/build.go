@@ -15,6 +15,7 @@
 package cell
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -499,7 +500,11 @@ func BuildJSON(v any) (*gpb.Value, error) {
 	case *string:
 		val = *t
 	default:
-		return nil, fmt.Errorf(formatter+"string", t, v)
+		jsonData, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		val = string(jsonData)
 	}
 
 	return &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: val}}, nil
