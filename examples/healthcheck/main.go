@@ -21,22 +21,39 @@ import (
 	greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
 )
 
-var (
-	client *greptime.Client
+const (
+	// The GreptimeDB address.
+	host = "127.0.0.1"
+
+	// The database name.
+	database = "public"
 )
 
-func init() {
-	cfg := greptime.NewConfig("127.0.0.1").WithDatabase("public")
+type client struct {
+	client *greptime.Client
+}
 
-	cli_, err := greptime.NewClient(cfg)
+func newClient() (*client, error) {
+	cfg := greptime.NewConfig(host).WithDatabase(database)
+	gtClient, err := greptime.NewClient(cfg)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
-	client = cli_
+
+	c := &client{
+		client: gtClient,
+	}
+
+	return c, nil
 }
 
 func main() {
-	_, err := client.HealthCheck(context.Background())
+	c, err := newClient()
+	if err != nil {
+		log.Fatalf("failed to new client: %v:", err)
+	}
+
+	_, err = c.client.HealthCheck(context.Background())
 	if err != nil {
 		log.Println("failed to health check:", err)
 		return

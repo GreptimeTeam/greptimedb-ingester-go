@@ -28,20 +28,30 @@ const (
 	INSERT = 0
 	UPDATE = 1
 	DELETE = 2
+
+	// The GreptimeDB address.
+	host = "127.0.0.1"
+
+	// The database name.
+	database = "public"
 )
 
-var (
+type client struct {
 	client *greptime.Client
-)
+}
 
-func init() {
-	cfg := greptime.NewConfig("127.0.0.1").WithDatabase("public")
-
-	cli_, err := greptime.NewClient(cfg)
+func newClient() (*client, error) {
+	cfg := greptime.NewConfig(host).WithDatabase(database)
+	gtClient, err := greptime.NewClient(cfg)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
-	client = cli_
+
+	c := &client{
+		client: gtClient,
+	}
+
+	return c, nil
 }
 
 func initData() []*table.Table {
@@ -127,46 +137,46 @@ func initData() []*table.Table {
 	return []*table.Table{itbl, utbl, dtbl}
 }
 
-func write(data *table.Table) {
+func (c *client) write(data *table.Table) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	resp, err := client.Write(ctx, data)
+	resp, err := c.client.Write(ctx, data)
 	if err != nil {
 		log.Println(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
 
-func delete(data *table.Table) {
+func (c *client) delete(data *table.Table) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	resp, err := client.Delete(ctx, data)
+	resp, err := c.client.Delete(ctx, data)
 	if err != nil {
 		log.Println(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
 
-func streamWrite(data *table.Table) {
+func (c *client) streamWrite(data *table.Table) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	if err := client.StreamWrite(ctx, data); err != nil {
+	if err := c.client.StreamWrite(ctx, data); err != nil {
 		log.Println(err)
 	}
-	affected, err := client.CloseStream(ctx)
+	affected, err := c.client.CloseStream(ctx)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	log.Printf("affected rows: %d\n", affected.GetValue())
 }
 
-func streamDelete(data *table.Table) {
+func (c *client) streamDelete(data *table.Table) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	if err := client.StreamDelete(ctx, data); err != nil {
+	if err := c.client.StreamDelete(ctx, data); err != nil {
 		log.Println(err)
 	}
-	affected, err := client.CloseStream(ctx)
+	affected, err := c.client.CloseStream(ctx)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -174,22 +184,27 @@ func streamDelete(data *table.Table) {
 }
 
 func main() {
+	c, err := newClient()
+	if err != nil {
+		log.Fatalf("failed to new client: %v:", err)
+	}
+
 	data := initData()
 	// insert
-	write(data[INSERT])
+	c.write(data[INSERT])
 	// update
-	write(data[UPDATE])
+	c.write(data[UPDATE])
 	// delete
-	delete(data[DELETE])
+	c.delete(data[DELETE])
 
 	time.Sleep(time.Millisecond * 100)
 
 	data = initData()
 	// stream insert
-	streamWrite(data[INSERT])
+	c.streamWrite(data[INSERT])
 	// stream update
-	streamWrite(data[UPDATE])
+	c.streamWrite(data[UPDATE])
 	// stream delete
-	streamDelete(data[DELETE])
+	c.streamDelete(data[DELETE])
 
 }
