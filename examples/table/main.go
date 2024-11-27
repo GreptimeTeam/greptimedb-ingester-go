@@ -62,76 +62,76 @@ func initData() []*table.Table {
 
 	itbl, err := table.New("monitors_with_schema")
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	// add column at first. This is to define the schema of the table.
 	if err := itbl.AddTagColumn("id", types.INT64); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := itbl.AddFieldColumn("host", types.STRING); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := itbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := itbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	if err := itbl.AddRow(1, "hello", 1.1, time1); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := itbl.AddRow(2, "hello", 2.2, time2); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := itbl.AddRow(3, "hello", 3.3, time3); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	utbl, err := table.New("monitors_with_schema")
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	// add column at first. This is to define the schema of the table.
 	if err := utbl.AddTagColumn("id", types.INT64); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := utbl.AddFieldColumn("host", types.STRING); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := utbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := utbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	if err := utbl.AddRow(1, "hello", 1.2, time1); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	dtbl, err := table.New("monitors_with_schema")
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	// add column at first. This is to define the schema of the table.
 	if err := dtbl.AddTagColumn("id", types.INT64); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := dtbl.AddFieldColumn("host", types.STRING); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := dtbl.AddFieldColumn("temperature", types.FLOAT); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	if err := dtbl.AddTimestampColumn("timestamp", types.TIMESTAMP_MICROSECOND); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	if err := dtbl.AddRow(3, "hello", 3.3, time3); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	return []*table.Table{itbl, utbl, dtbl}
@@ -142,7 +142,7 @@ func (c *client) write(data *table.Table) {
 	defer cancel()
 	resp, err := c.client.Write(ctx, data)
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
@@ -152,7 +152,7 @@ func (c *client) delete(data *table.Table) {
 	defer cancel()
 	resp, err := c.client.Delete(ctx, data)
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
@@ -161,11 +161,11 @@ func (c *client) streamWrite(data *table.Table) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	if err := c.client.StreamWrite(ctx, data); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	affected, err := c.client.CloseStream(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", affected.GetValue())
 }
@@ -174,11 +174,11 @@ func (c *client) streamDelete(data *table.Table) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	if err := c.client.StreamDelete(ctx, data); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	affected, err := c.client.CloseStream(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", affected.GetValue())
 }
