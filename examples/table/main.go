@@ -186,7 +186,7 @@ func (c *client) streamDelete(data *table.Table) {
 func main() {
 	c, err := newClient()
 	if err != nil {
-		log.Fatalf("failed to new client: %v:", err)
+		log.Fatalf("failed to new client: %v", err)
 	}
 
 	data := initData()

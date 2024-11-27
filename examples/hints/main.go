@@ -130,10 +130,10 @@ func main() {
 
 	c, err := newClient()
 	if err != nil {
-		log.Fatalf("failed to new client: %v:", err)
+		log.Fatalf("failed to new client: %v", err)
 	}
 
 	if err = c.write(data); err != nil {
-		log.Fatalf("failed to write data: %v:", err)
+		log.Fatalf("failed to write data: %v", err)
 	}
 }

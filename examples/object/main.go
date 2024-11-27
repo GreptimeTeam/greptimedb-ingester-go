@@ -30,6 +30,16 @@ const (
 	database = "public"
 )
 
+type Monitor struct {
+	ID          int64     `greptime:"tag;column:id;type:int64"`
+	Host        string    `greptime:"tag;column:host;type:string"`
+	Memory      uint64    `greptime:"field;column:memory;type:uint64"`
+	Cpu         float64   `greptime:"field;column:cpu;type:float64"`
+	Temperature int64     `greptime:"field;column:temperature;type:int64"`
+	Running     bool      `greptime:"field;column:running;type:boolean"`
+	Ts          time.Time `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
+}
+
 type client struct {
 	client *greptime.Client
 }
@@ -46,16 +56,6 @@ func newClient() (*client, error) {
 	}
 
 	return c, nil
-}
-
-type Monitor struct {
-	ID          int64     `greptime:"tag;column:id;type:int64"`
-	Host        string    `greptime:"tag;column:host;type:string"`
-	Memory      uint64    `greptime:"field;column:memory;type:uint64"`
-	Cpu         float64   `greptime:"field;column:cpu;type:float64"`
-	Temperature int64     `greptime:"field;column:temperature;type:int64"`
-	Running     bool      `greptime:"field;column:running;type:boolean"`
-	Ts          time.Time `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
 }
 
 func (Monitor) TableName() string {
@@ -107,7 +107,7 @@ func (c *client) writeObject(data []Monitor) {
 
 	resp, err := c.client.WriteObject(ctx, data)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
@@ -118,7 +118,7 @@ func (c *client) deleteObject(data []Monitor) {
 
 	resp, err := c.client.DeleteObject(ctx, data)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
@@ -128,7 +128,7 @@ func (c *client) streamWriteObject(data []Monitor) {
 	defer cancel()
 
 	if err := c.client.StreamWriteObject(ctx, data); err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 	affected, err := c.client.CloseStream(ctx)
 	if err != nil {
@@ -142,7 +142,7 @@ func (c *client) streamDeleteObject(data []Monitor) {
 	defer cancel()
 
 	if err := c.client.StreamDeleteObject(ctx, data); err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 	affected, err := c.client.CloseStream(ctx)
 	if err != nil {
@@ -154,7 +154,7 @@ func (c *client) streamDeleteObject(data []Monitor) {
 func main() {
 	c, err := newClient()
 	if err != nil {
-		log.Fatalf("failed to new client: %v:", err)
+		log.Fatalf("failed to new client: %v", err)
 	}
 
 	data := initData()
