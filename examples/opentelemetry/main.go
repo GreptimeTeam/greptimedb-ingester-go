@@ -86,7 +86,7 @@ func main() {
 
 	conn, err := initConn()
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 
 	serviceName := semconv.ServiceNameKey.String("test-otel")
@@ -97,24 +97,24 @@ func main() {
 		),
 	)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 
 	tracerProvider, err := initTracerProvider(ctx, res, conn)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 
 	exporter, err := otelprom.New(otelprom.WithNamespace("greptime"))
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	meterProvider := metric.NewMeterProvider(
 		metric.WithReader(exporter),
 	)
 
 	if err = initMeterProvider(ctx, res, conn); err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 
 	// Start the prometheus HTTP server and pass the exporter Collector to it

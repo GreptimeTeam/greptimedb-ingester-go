@@ -107,7 +107,7 @@ func (c *client) writeObject(data []Monitor) {
 
 	resp, err := c.client.WriteObject(ctx, data)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
@@ -118,7 +118,7 @@ func (c *client) deleteObject(data []Monitor) {
 
 	resp, err := c.client.DeleteObject(ctx, data)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", resp.GetAffectedRows().GetValue())
 }
@@ -128,11 +128,11 @@ func (c *client) streamWriteObject(data []Monitor) {
 	defer cancel()
 
 	if err := c.client.StreamWriteObject(ctx, data); err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	affected, err := c.client.CloseStream(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", affected.GetValue())
 }
@@ -142,11 +142,11 @@ func (c *client) streamDeleteObject(data []Monitor) {
 	defer cancel()
 
 	if err := c.client.StreamDeleteObject(ctx, data); err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	affected, err := c.client.CloseStream(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 	log.Printf("affected rows: %d\n", affected.GetValue())
 }
