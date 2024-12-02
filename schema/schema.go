@@ -52,7 +52,7 @@ func getTableName(typ reflect.Type) (string, error) {
 
 func Parse(input any) (*table.Table, error) {
 	if input == nil {
-		return nil, fmt.Errorf("unsupported empty data. %#v", input)
+		return nil, fmt.Errorf("unsupported empty data: %#v", input)
 	}
 
 	schema_, err := parseSchema(input)
@@ -150,10 +150,16 @@ func (s *Schema) parseValues(input any) error {
 		}
 
 		field := s.fields[i]
-
 		value, err := parseValue(field.Datatype, val.FieldByName(structField.Name))
 		if err != nil {
 			return err
+		}
+		if structField.Tag.Get("greptime") == "-" {
+			zeroValue := reflect.Zero(structField.Type).Interface()
+			value, err = parseValue(field.Datatype, reflect.ValueOf(zeroValue))
+			if err != nil {
+				return err
+			}
 		}
 		values = append(values, value)
 	}
