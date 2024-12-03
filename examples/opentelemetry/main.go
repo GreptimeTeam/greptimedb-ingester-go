@@ -122,15 +122,15 @@ func main() {
 
 	c, err := newClient(tracerProvider, meterProvider)
 	if err != nil {
-		log.Fatalf("failed to new client: %v:", err)
+		log.Fatalf("failed to new client: %v", err)
 	}
 
 	data, err := initData()
 	if err != nil {
-		log.Fatalf("failed to init data: %v:", err)
+		log.Fatalf("failed to init data: %v", err)
 	}
 	if err = c.write(data[1]); err != nil {
-		log.Fatalf("failed to write data: %v:", err)
+		log.Fatalf("failed to write data: %v", err)
 	}
 
 	log.Printf("Sleep 30s...")
