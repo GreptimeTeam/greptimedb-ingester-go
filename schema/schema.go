@@ -114,7 +114,9 @@ func parseSchema(input any) (*Schema, error) {
 		if err != nil {
 			return nil, err
 		}
-		fields = append(fields, field.ToColumnSchema())
+		if field != nil {
+			fields = append(fields, field.ToColumnSchema())
+		}
 	}
 
 	return &Schema{tableName: tableName, fields: fields}, nil
@@ -142,24 +144,22 @@ func (s *Schema) parseValues(input any) error {
 		return fmt.Errorf("unsupported type %T of %+v", input, input)
 	}
 
-	size := len(reflect.VisibleFields(typ))
-	values := make([]*gpb.Value, 0, size)
-	for i, structField := range reflect.VisibleFields(typ) {
-		if !structField.IsExported() {
+	visibleFields := reflect.VisibleFields(typ)
+	size := make([]reflect.StructField, 0, len(visibleFields))
+	values := make([]*gpb.Value, 0, len(size))
+
+	for _, structField := range visibleFields {
+		if !structField.IsExported() || structField.Tag.Get("greptime") == "-" {
 			continue
 		}
+		size = append(size, structField)
+	}
 
+	for i, structField := range size {
 		field := s.fields[i]
 		value, err := parseValue(field.Datatype, val.FieldByName(structField.Name))
 		if err != nil {
 			return err
-		}
-		if structField.Tag.Get("greptime") == "-" {
-			zeroValue := reflect.Zero(structField.Type).Interface()
-			value, err = parseValue(field.Datatype, reflect.ValueOf(zeroValue))
-			if err != nil {
-				return err
-			}
 		}
 		values = append(values, value)
 	}
