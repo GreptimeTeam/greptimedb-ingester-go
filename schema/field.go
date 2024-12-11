@@ -52,6 +52,10 @@ func newColumnSchema(columnName string, semanticType gpb.SemanticType, datatype 
 func parseField(structField reflect.StructField) (*Field, error) {
 	tags := parseTag(structField)
 
+	if _, ok := tags["-"]; ok && len(tags) == 1 {
+		return nil, nil
+	}
+
 	columnName, err := util.SanitateName(structField.Name)
 	if err != nil {
 		return nil, err
