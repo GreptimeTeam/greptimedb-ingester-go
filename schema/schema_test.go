@@ -976,7 +976,7 @@ func TestParseWithUnmatchedDatatype(t *testing.T) {
 	}
 }
 
-func TestParseSchemaWithIgnoreFields(t *testing.T) {
+func TestParseSchemaWithSkipFields(t *testing.T) {
 	INT := 1
 	INT8 := int8(2)
 	INT16 := int16(3)

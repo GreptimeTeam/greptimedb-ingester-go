@@ -19,7 +19,7 @@ docker run --rm -p 4000-4003:4000-4003 \
 - [opentelemetry](opentelemetry/README.md)
 - [hints](hints/README.md)
 - [jsondata](jsondata/README.md)
-- [ignorefields](ignorefields/README.md)
+- [skipfields](skipfields/README.md)
 
 ## Query
 

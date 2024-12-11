@@ -1,6 +1,7 @@
 # Insert data into GreptimeDB
 
-When fields are marked with `greptime:"-"`, writing to these fields will be ignored.
+When fields are marked with `greptime:"-"`, writing to these fields will be skipped.
+
 ```go
 type Monitor struct {
   ID          int64     `greptime:"tag;column:id;type:int64"`
@@ -33,7 +34,7 @@ Your can using [MySQL Client](https://docs.greptime.com/user-guide/protocols/mys
 ```shell
 $ mysql -h 127.0.0.1 -P 4002
 
-mysql> select *from monitors_with_ignore_field;
+mysql> select *from monitors_with_skip_fields;
 +------+-----------+------+---------+----------------------------+
 | id   | host      | cpu  | running | ts                         |
 +------+-----------+------+---------+----------------------------+

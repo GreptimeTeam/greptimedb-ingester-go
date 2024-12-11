@@ -59,7 +59,7 @@ func newClient() (*client, error) {
 }
 
 func (Monitor) TableName() string {
-	return "monitors_with_ignore_field"
+	return "monitors_with_skip_fields"
 }
 
 func initData() []Monitor {
