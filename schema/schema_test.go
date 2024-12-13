@@ -975,3 +975,96 @@ func TestParseWithUnmatchedDatatype(t *testing.T) {
 		assert.Nil(t, tbl)
 	}
 }
+
+func TestParseSchemaWithIgnoreFields(t *testing.T) {
+	INT16 := int16(1)
+	UINT64 := uint64(2)
+	FLOAT32 := float32(3)
+	STRING := "string"
+	JSON := `{"key1":"value1","key2":10}`
+
+	TIMESTAMP := time.Now()
+	DATETIME_INT := TIMESTAMP.UnixMilli()
+
+	length := 6
+	assertSchema := func(cols []*gpb.ColumnSchema) {
+		assert.Len(t, cols, length)
+
+		assert.EqualValues(t, newColumnSchema("uint64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), cols[0])
+		assert.EqualValues(t, newColumnSchema("string_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_STRING), cols[1])
+		assert.EqualValues(t, newColumnSchema("json_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_JSON), cols[2])
+
+		offset := length / 2
+		assert.EqualValues(t, newColumnSchema("ptr_uint64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), cols[0+offset])
+		assert.EqualValues(t, newColumnSchema("ptr_string_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_STRING), cols[1+offset])
+		assert.EqualValues(t, newColumnSchema("ptr_json_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_JSON), cols[2+offset])
+	}
+
+	assertValue := func(row *gpb.Row) {
+		vals := row.Values
+		assert.Len(t, vals, length)
+
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U64Value{U64Value: UINT64}}, vals[0])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: STRING}}, vals[1])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: JSON}}, vals[2])
+
+		offset := length / 2
+
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U64Value{U64Value: UINT64}}, vals[0+offset])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: STRING}}, vals[1+offset])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: JSON}}, vals[2+offset])
+	}
+
+	type Monitor struct {
+		INT16        int16   `greptime:"-"`
+		UINT64       uint64  `greptime:"field;column:uint64_column;type:uint64"`
+		FLOAT32      float32 `greptime:"-"`
+		STRING       string  `greptime:"field;column:string_column;type:string"`
+		DATETIME_INT int64   `greptime:"-"`
+		JSON         string  `greptime:"field;column:json_column;type:json"`
+
+		PtrINT16        *int16   `greptime:"-"`
+		PtrUINT64       *uint64  `greptime:"field;column:ptr_uint64_column;type:uint64"`
+		PtrFLOAT32      *float32 `greptime:"-"`
+		PtrSTRING       *string  `greptime:"field;column:ptr_string_column;type:string"`
+		PtrDATETIME_INT *int64   `greptime:"-"`
+		PtrJSON         *string  `greptime:"field;column:ptr_json_column;type:json"`
+
+		privateField string // will be ignored
+	}
+
+	monitor := Monitor{
+		INT16:        INT16,
+		UINT64:       UINT64,
+		FLOAT32:      FLOAT32,
+		STRING:       STRING,
+		DATETIME_INT: DATETIME_INT,
+		JSON:         JSON,
+
+		PtrINT16:        &INT16,
+		PtrUINT64:       &UINT64,
+		PtrFLOAT32:      &FLOAT32,
+		PtrSTRING:       &STRING,
+		PtrDATETIME_INT: &DATETIME_INT,
+		PtrJSON:         &JSON,
+
+		privateField: "private",
+	}
+
+	{
+		tbl, err := Parse(monitor)
+		assert.Nil(t, err)
+		assert.NotNil(t, tbl)
+
+		rows := tbl.GetRows()
+		assert.NotNil(t, rows)
+
+		assertSchema(rows.Schema)
+
+		assert.Len(t, rows.Rows, 1)
+		assert.Len(t, rows.Rows[0].Values, length)
+		for _, row := range rows.Rows {
+			assertValue(row)
+		}
+	}
+}

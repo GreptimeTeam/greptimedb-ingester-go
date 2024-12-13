@@ -52,6 +52,10 @@ func newColumnSchema(columnName string, semanticType gpb.SemanticType, datatype 
 func parseField(structField reflect.StructField) (*Field, error) {
 	tags := parseTag(structField)
 
+	if _, ok := tags[IgnoreFiledTag]; ok && len(tags) == 1 {
+		return nil, nil
+	}
+
 	columnName, err := util.SanitateName(structField.Name)
 	if err != nil {
 		return nil, err
@@ -85,7 +89,7 @@ func parseField(structField reflect.StructField) (*Field, error) {
 func parseTag(structField reflect.StructField) map[string]string {
 	tags := map[string]string{}
 
-	str, ok := structField.Tag.Lookup("greptime")
+	str, ok := structField.Tag.Lookup(GreptimeFieldTagKey)
 	if !ok {
 		return tags
 	}

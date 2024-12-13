@@ -25,6 +25,11 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
+const (
+	IgnoreFiledTag      = "-"
+	GreptimeFieldTagKey = "greptime"
+)
+
 type Schema struct {
 	tableName string
 
@@ -52,7 +57,7 @@ func getTableName(typ reflect.Type) (string, error) {
 
 func Parse(input any) (*table.Table, error) {
 	if input == nil {
-		return nil, fmt.Errorf("unsupported empty data. %#v", input)
+		return nil, fmt.Errorf("unsupported empty data: %#v", input)
 	}
 
 	schema_, err := parseSchema(input)
@@ -114,7 +119,9 @@ func parseSchema(input any) (*Schema, error) {
 		if err != nil {
 			return nil, err
 		}
-		fields = append(fields, field.ToColumnSchema())
+		if field != nil {
+			fields = append(fields, field.ToColumnSchema())
+		}
 	}
 
 	return &Schema{tableName: tableName, fields: fields}, nil
@@ -142,15 +149,19 @@ func (s *Schema) parseValues(input any) error {
 		return fmt.Errorf("unsupported type %T of %+v", input, input)
 	}
 
-	size := len(reflect.VisibleFields(typ))
-	values := make([]*gpb.Value, 0, size)
-	for i, structField := range reflect.VisibleFields(typ) {
-		if !structField.IsExported() {
+	visibleFields := reflect.VisibleFields(typ)
+	processingFields := make([]reflect.StructField, 0, len(visibleFields))
+	values := make([]*gpb.Value, 0, len(processingFields))
+
+	for _, structField := range visibleFields {
+		if !structField.IsExported() || structField.Tag.Get(GreptimeFieldTagKey) == IgnoreFiledTag {
 			continue
 		}
+		processingFields = append(processingFields, structField)
+	}
 
+	for i, structField := range processingFields {
 		field := s.fields[i]
-
 		value, err := parseValue(field.Datatype, val.FieldByName(structField.Name))
 		if err != nil {
 			return err
