@@ -130,7 +130,9 @@ If you prefer ORM style, and define column-field relationship via struct field t
 - `type` is to define the data type. if type is timestamp, `precision` is supported
 - the metadata separator is `;` and the key value separator is `:`
 
-type supported is the same as described [Datatypes supported](#datatypes-supported), and case insensitive
+type supported is the same as described [Datatypes supported](#datatypes-supported), and case insensitive.
+
+When fields marked with `greptime:"-"`, writing field will be ignored.
 
 ##### define struct with tags
 

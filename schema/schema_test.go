@@ -976,269 +976,77 @@ func TestParseWithUnmatchedDatatype(t *testing.T) {
 	}
 }
 
-func TestParseSchemaWithSkipFields(t *testing.T) {
-	INT := 1
-	INT8 := int8(2)
-	INT16 := int16(3)
-	INT32 := int32(4)
-	INT64 := int64(5)
-	UINT := uint(6)
-	UINT8 := uint8(7)
-	UINT16 := uint16(8)
-	UINT32 := uint32(9)
-	UINT64 := uint64(10)
-	FLOAT32 := float32(11)
-	FLOAT64 := float64(12)
-	BOOLEAN := true
-	BINARY := []byte{1, 2, 3}
+func TestParseSchemaWithIgnoreFields(t *testing.T) {
+	INT16 := int16(1)
+	UINT64 := uint64(2)
+	FLOAT32 := float32(3)
 	STRING := "string"
 	JSON := `{"key1":"value1","key2":10}`
 
 	TIMESTAMP := time.Now()
-	DATE_INT := TIMESTAMP.Unix() / int64(cell.ONE_DAY_IN_SECONDS)
 	DATETIME_INT := TIMESTAMP.UnixMilli()
-	TIMESTAMP_SECOND_INT := TIMESTAMP.Unix()
-	TIMESTAMP_MILLISECOND_INT := TIMESTAMP.UnixMilli()
-	TIMESTAMP_MICROSECOND_INT := TIMESTAMP.UnixMicro()
-	TIMESTAMP_NANOSECOND_INT := TIMESTAMP.UnixNano()
 
-	length := 50
+	length := 6
 	assertSchema := func(cols []*gpb.ColumnSchema) {
 		assert.Len(t, cols, length)
 
-		assert.EqualValues(t, newColumnSchema("int_column", gpb.SemanticType_TAG, gpb.ColumnDataType_INT64), cols[0])
-		assert.EqualValues(t, newColumnSchema("int8_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT8), cols[1])
-		assert.EqualValues(t, newColumnSchema("int32_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT32), cols[2])
-		assert.EqualValues(t, newColumnSchema("int64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT64), cols[3])
-		assert.EqualValues(t, newColumnSchema("uint_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), cols[4])
-		assert.EqualValues(t, newColumnSchema("uint8_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT8), cols[5])
-		assert.EqualValues(t, newColumnSchema("uint16_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT16), cols[6])
-		assert.EqualValues(t, newColumnSchema("uint32_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT32), cols[7])
-		assert.EqualValues(t, newColumnSchema("uint64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), cols[8])
-		assert.EqualValues(t, newColumnSchema("float64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_FLOAT64), cols[9])
-		assert.EqualValues(t, newColumnSchema("boolean_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_BOOLEAN), cols[10])
-		assert.EqualValues(t, newColumnSchema("binary_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_BINARY), cols[11])
-		assert.EqualValues(t, newColumnSchema("string_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_STRING), cols[12])
-		assert.EqualValues(t, newColumnSchema("date_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATE), cols[13])
-		assert.EqualValues(t, newColumnSchema("datetime_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATETIME), cols[14])
-		assert.EqualValues(t, newColumnSchema("timestamp_second_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_SECOND), cols[15])
-		assert.EqualValues(t, newColumnSchema("timestamp_millisecond_column", gpb.SemanticType_TIMESTAMP, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), cols[16])
-		assert.EqualValues(t, newColumnSchema("timestamp_microsecond_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), cols[17])
-		assert.EqualValues(t, newColumnSchema("timestamp_nanosecond_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), cols[18])
-		assert.EqualValues(t, newColumnSchema("date_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATE), cols[19])
-		assert.EqualValues(t, newColumnSchema("timestamp_second_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_SECOND), cols[20])
-		assert.EqualValues(t, newColumnSchema("timestamp_millisecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), cols[21])
-		assert.EqualValues(t, newColumnSchema("timestamp_microsecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), cols[22])
-		assert.EqualValues(t, newColumnSchema("timestamp_nanosecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), cols[23])
-		assert.EqualValues(t, newColumnSchema("json_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_JSON), cols[24])
+		assert.EqualValues(t, newColumnSchema("uint64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), cols[0])
+		assert.EqualValues(t, newColumnSchema("string_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_STRING), cols[1])
+		assert.EqualValues(t, newColumnSchema("json_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_JSON), cols[2])
 
 		offset := length / 2
-		assert.EqualValues(t, newColumnSchema("ptr_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT64), cols[0+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_int8_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT8), cols[1+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_int32_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT32), cols[2+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_int64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_INT64), cols[3+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_uint_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), cols[4+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_uint8_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT8), cols[5+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_uint16_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT16), cols[6+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_uint32_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT32), cols[7+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_uint64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), cols[8+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_float64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_FLOAT64), cols[9+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_boolean_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_BOOLEAN), cols[10+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_binary_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_BINARY), cols[11+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_string_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_STRING), cols[12+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_date_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATE), cols[13+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_datetime_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATETIME), cols[14+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_timestamp_second_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_SECOND), cols[15+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_timestamp_millisecond_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), cols[16+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_timestamp_microsecond_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), cols[17+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_timestamp_nanosecond_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), cols[18+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_date_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_DATE), cols[19+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_timestamp_second_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_SECOND), cols[20+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_timestamp_millisecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MILLISECOND), cols[21+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_timestamp_microsecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_MICROSECOND), cols[22+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_timestamp_nanosecond_int_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_TIMESTAMP_NANOSECOND), cols[23+offset])
-		assert.EqualValues(t, newColumnSchema("ptr_json_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_JSON), cols[24+offset])
+		assert.EqualValues(t, newColumnSchema("ptr_uint64_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_UINT64), cols[0+offset])
+		assert.EqualValues(t, newColumnSchema("ptr_string_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_STRING), cols[1+offset])
+		assert.EqualValues(t, newColumnSchema("ptr_json_column", gpb.SemanticType_FIELD, gpb.ColumnDataType_JSON), cols[2+offset])
 	}
 
 	assertValue := func(row *gpb.Row) {
 		vals := row.Values
 		assert.Len(t, vals, length)
 
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I64Value{I64Value: int64(INT)}}, vals[0])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I8Value{I8Value: int32(INT8)}}, vals[1])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I32Value{I32Value: INT32}}, vals[2])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I64Value{I64Value: INT64}}, vals[3])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U64Value{U64Value: uint64(UINT)}}, vals[4])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U8Value{U8Value: uint32(UINT8)}}, vals[5])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U16Value{U16Value: uint32(UINT16)}}, vals[6])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U32Value{U32Value: UINT32}}, vals[7])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U64Value{U64Value: UINT64}}, vals[8])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_F64Value{F64Value: FLOAT64}}, vals[9])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_BoolValue{BoolValue: BOOLEAN}}, vals[10])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_BinaryValue{BinaryValue: BINARY}}, vals[11])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: STRING}}, vals[12])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_DateValue{DateValue: int32(DATE_INT)}}, vals[13])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_DatetimeValue{DatetimeValue: DATETIME_INT}}, vals[14])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampSecondValue{TimestampSecondValue: TIMESTAMP.Unix()}}, vals[15])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMillisecondValue{TimestampMillisecondValue: TIMESTAMP.UnixMilli()}}, vals[16])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMicrosecondValue{TimestampMicrosecondValue: TIMESTAMP.UnixMicro()}}, vals[17])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampNanosecondValue{TimestampNanosecondValue: TIMESTAMP.UnixNano()}}, vals[18])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_DateValue{DateValue: int32(DATE_INT)}}, vals[19])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampSecondValue{TimestampSecondValue: TIMESTAMP.Unix()}}, vals[20])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMillisecondValue{TimestampMillisecondValue: TIMESTAMP.UnixMilli()}}, vals[21])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMicrosecondValue{TimestampMicrosecondValue: TIMESTAMP.UnixMicro()}}, vals[22])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampNanosecondValue{TimestampNanosecondValue: TIMESTAMP.UnixNano()}}, vals[23])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: JSON}}, vals[24])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U64Value{U64Value: UINT64}}, vals[0])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: STRING}}, vals[1])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: JSON}}, vals[2])
 
 		offset := length / 2
 
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I64Value{I64Value: int64(INT)}}, vals[0+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I8Value{I8Value: int32(INT8)}}, vals[1+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I32Value{I32Value: INT32}}, vals[2+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_I64Value{I64Value: INT64}}, vals[3+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U64Value{U64Value: uint64(UINT)}}, vals[4+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U8Value{U8Value: uint32(UINT8)}}, vals[5+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U16Value{U16Value: uint32(UINT16)}}, vals[6+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U32Value{U32Value: UINT32}}, vals[7+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U64Value{U64Value: UINT64}}, vals[8+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_F64Value{F64Value: FLOAT64}}, vals[9+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_BoolValue{BoolValue: BOOLEAN}}, vals[10+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_BinaryValue{BinaryValue: BINARY}}, vals[11+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: STRING}}, vals[12+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_DateValue{DateValue: int32(DATE_INT)}}, vals[13+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_DatetimeValue{DatetimeValue: DATETIME_INT}}, vals[14+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampSecondValue{TimestampSecondValue: TIMESTAMP.Unix()}}, vals[15+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMillisecondValue{TimestampMillisecondValue: TIMESTAMP.UnixMilli()}}, vals[16+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMicrosecondValue{TimestampMicrosecondValue: TIMESTAMP.UnixMicro()}}, vals[17+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampNanosecondValue{TimestampNanosecondValue: TIMESTAMP.UnixNano()}}, vals[18+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_DateValue{DateValue: int32(DATE_INT)}}, vals[19+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampSecondValue{TimestampSecondValue: TIMESTAMP.Unix()}}, vals[20+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMillisecondValue{TimestampMillisecondValue: TIMESTAMP.UnixMilli()}}, vals[21+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampMicrosecondValue{TimestampMicrosecondValue: TIMESTAMP.UnixMicro()}}, vals[22+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_TimestampNanosecondValue{TimestampNanosecondValue: TIMESTAMP.UnixNano()}}, vals[23+offset])
-		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: JSON}}, vals[24+offset])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_U64Value{U64Value: UINT64}}, vals[0+offset])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: STRING}}, vals[1+offset])
+		assert.EqualValues(t, &gpb.Value{ValueData: &gpb.Value_StringValue{StringValue: JSON}}, vals[2+offset])
 	}
 
 	type Monitor struct {
-		INT                       int       `greptime:"tag;column:int_column;type:int"`
-		INT8                      int8      `greptime:"field;column:int8_column;type:int8"`
-		INT16                     int16     `greptime:"-"`
-		INT32                     int32     `greptime:"field;column:int32_column;type:int32"`
-		INT64                     int64     `greptime:"field;column:int64_column;type:int64"`
-		UINT                      uint      `greptime:"field;column:uint_column;type:uint"`
-		UINT8                     uint8     `greptime:"field;column:uint8_column;type:uint8"`
-		UINT16                    uint16    `greptime:"field;column:uint16_column;type:uint16"`
-		UINT32                    uint32    `greptime:"field;column:uint32_column;type:uint32"`
-		UINT64                    uint64    `greptime:"field;column:uint64_column;type:uint64"`
-		FLOAT32                   float32   `greptime:"-"`
-		FLOAT64                   float64   `greptime:"field;column:float64_column;type:float64"`
-		BOOLEAN                   bool      `greptime:"field;column:boolean_column;type:boolean"`
-		BINARY                    []byte    `greptime:"field;column:binary_column;type:binary"`
-		STRING                    string    `greptime:"field;column:string_column;type:string"`
-		DATE                      time.Time `greptime:"field;column:date_column;type:date"`
-		DATETIME                  time.Time `greptime:"field;column:datetime_column;type:datetime"`
-		TIMESTAMP_SECOND          time.Time `greptime:"field;column:timestamp_second_column;type:timestamp;precision:second"`
-		TIMESTAMP_MILLISECOND     time.Time `greptime:"timestamp;column:timestamp_millisecond_column;type:timestamp;precision:millisecond"`
-		TIMESTAMP_MICROSECOND     time.Time `greptime:"field;column:timestamp_microsecond_column;type:timestamp;precision:microsecond"`
-		TIMESTAMP_NANOSECOND      time.Time `greptime:"field;column:timestamp_nanosecond_column;type:timestamp;precision:nanosecond"`
-		DATE_INT                  int64     `greptime:"field;column:date_int_column;type:date"`
-		DATETIME_INT              int64     `greptime:"-"`
-		TIMESTAMP_SECOND_INT      int64     `greptime:"field;column:timestamp_second_int_column;type:timestamp;precision:second"`
-		TIMESTAMP_MILLISECOND_INT int64     `greptime:"field;column:timestamp_millisecond_int_column;type:timestamp;precision:millisecond"`
-		TIMESTAMP_MICROSECOND_INT int64     `greptime:"field;column:timestamp_microsecond_int_column;type:timestamp;precision:microsecond"`
-		TIMESTAMP_NANOSECOND_INT  int64     `greptime:"field;column:timestamp_nanosecond_int_column;type:timestamp;precision:nanosecond"`
-		JSON                      string    `greptime:"field;column:json_column;type:json"`
+		INT16        int16   `greptime:"-"`
+		UINT64       uint64  `greptime:"field;column:uint64_column;type:uint64"`
+		FLOAT32      float32 `greptime:"-"`
+		STRING       string  `greptime:"field;column:string_column;type:string"`
+		DATETIME_INT int64   `greptime:"-"`
+		JSON         string  `greptime:"field;column:json_column;type:json"`
 
-		PtrINT                       *int       `greptime:"field;column:ptr_int_column;type:int"`
-		PtrINT8                      *int8      `greptime:"field;column:ptr_int8_column;type:int8"`
-		PtrINT16                     *int16     `greptime:"-"`
-		PtrINT32                     *int32     `greptime:"field;column:ptr_int32_column;type:int32"`
-		PtrINT64                     *int64     `greptime:"field;column:ptr_int64_column;type:int64"`
-		PtrUINT                      *uint      `greptime:"field;column:ptr_uint_column;type:uint"`
-		PtrUINT8                     *uint8     `greptime:"field;column:ptr_uint8_column;type:uint8"`
-		PtrUINT16                    *uint16    `greptime:"field;column:ptr_uint16_column;type:uint16"`
-		PtrUINT32                    *uint32    `greptime:"field;column:ptr_uint32_column;type:uint32"`
-		PtrUINT64                    *uint64    `greptime:"field;column:ptr_uint64_column;type:uint64"`
-		PtrFLOAT32                   *float32   `greptime:"-"`
-		PtrFLOAT64                   *float64   `greptime:"field;column:ptr_float64_column;type:float64"`
-		PtrBOOLEAN                   *bool      `greptime:"field;column:ptr_boolean_column;type:boolean"`
-		PtrBINARY                    *[]byte    `greptime:"field;column:ptr_binary_column;type:binary"`
-		PtrSTRING                    *string    `greptime:"field;column:ptr_string_column;type:string"`
-		PtrDATE                      *time.Time `greptime:"field;column:ptr_date_column;type:date"`
-		PtrDATETIME                  *time.Time `greptime:"field;column:ptr_datetime_column;type:datetime"`
-		PtrTIMESTAMP_SECOND          *time.Time `greptime:"field;column:ptr_timestamp_second_column;type:timestamp;precision:second"`
-		PtrTIMESTAMP_MILLISECOND     *time.Time `greptime:"field;column:ptr_timestamp_millisecond_column;type:timestamp;precision:millisecond"`
-		PtrTIMESTAMP_MICROSECOND     *time.Time `greptime:"field;column:ptr_timestamp_microsecond_column;type:timestamp;precision:microsecond"`
-		PtrTIMESTAMP_NANOSECOND      *time.Time `greptime:"field;column:ptr_timestamp_nanosecond_column;type:timestamp;precision:nanosecond"`
-		PtrDATE_INT                  *int64     `greptime:"field;column:ptr_date_int_column;type:date"`
-		PtrDATETIME_INT              *int64     `greptime:"-"`
-		PtrTIMESTAMP_SECOND_INT      *int64     `greptime:"field;column:ptr_timestamp_second_int_column;type:timestamp;precision:second"`
-		PtrTIMESTAMP_MILLISECOND_INT *int64     `greptime:"field;column:ptr_timestamp_millisecond_int_column;type:timestamp;precision:millisecond"`
-		PtrTIMESTAMP_MICROSECOND_INT *int64     `greptime:"field;column:ptr_timestamp_microsecond_int_column;type:timestamp;precision:microsecond"`
-		PtrTIMESTAMP_NANOSECOND_INT  *int64     `greptime:"field;column:ptr_timestamp_nanosecond_int_column;type:timestamp;precision:nanosecond"`
-		PtrJSON                      *string    `greptime:"field;column:ptr_json_column;type:json"`
+		PtrINT16        *int16   `greptime:"-"`
+		PtrUINT64       *uint64  `greptime:"field;column:ptr_uint64_column;type:uint64"`
+		PtrFLOAT32      *float32 `greptime:"-"`
+		PtrSTRING       *string  `greptime:"field;column:ptr_string_column;type:string"`
+		PtrDATETIME_INT *int64   `greptime:"-"`
+		PtrJSON         *string  `greptime:"field;column:ptr_json_column;type:json"`
 
 		privateField string // will be ignored
 	}
 
 	monitor := Monitor{
-		INT:                       INT,
-		INT8:                      INT8,
-		INT16:                     INT16,
-		INT32:                     INT32,
-		INT64:                     INT64,
-		UINT:                      UINT,
-		UINT8:                     UINT8,
-		UINT16:                    UINT16,
-		UINT32:                    UINT32,
-		UINT64:                    UINT64,
-		FLOAT32:                   FLOAT32,
-		FLOAT64:                   FLOAT64,
-		BOOLEAN:                   BOOLEAN,
-		BINARY:                    BINARY,
-		STRING:                    STRING,
-		DATE:                      TIMESTAMP,
-		DATETIME:                  TIMESTAMP,
-		TIMESTAMP_SECOND:          TIMESTAMP,
-		TIMESTAMP_MILLISECOND:     TIMESTAMP,
-		TIMESTAMP_MICROSECOND:     TIMESTAMP,
-		TIMESTAMP_NANOSECOND:      TIMESTAMP,
-		DATE_INT:                  DATE_INT,
-		DATETIME_INT:              DATETIME_INT,
-		TIMESTAMP_SECOND_INT:      TIMESTAMP_SECOND_INT,
-		TIMESTAMP_MILLISECOND_INT: TIMESTAMP_MILLISECOND_INT,
-		TIMESTAMP_MICROSECOND_INT: TIMESTAMP_MICROSECOND_INT,
-		TIMESTAMP_NANOSECOND_INT:  TIMESTAMP_NANOSECOND_INT,
-		JSON:                      JSON,
+		INT16:        INT16,
+		UINT64:       UINT64,
+		FLOAT32:      FLOAT32,
+		STRING:       STRING,
+		DATETIME_INT: DATETIME_INT,
+		JSON:         JSON,
 
-		PtrINT:                       &INT,
-		PtrINT8:                      &INT8,
-		PtrINT16:                     &INT16,
-		PtrINT32:                     &INT32,
-		PtrINT64:                     &INT64,
-		PtrUINT:                      &UINT,
-		PtrUINT8:                     &UINT8,
-		PtrUINT16:                    &UINT16,
-		PtrUINT32:                    &UINT32,
-		PtrUINT64:                    &UINT64,
-		PtrFLOAT32:                   &FLOAT32,
-		PtrFLOAT64:                   &FLOAT64,
-		PtrBOOLEAN:                   &BOOLEAN,
-		PtrBINARY:                    &BINARY,
-		PtrSTRING:                    &STRING,
-		PtrDATE:                      &TIMESTAMP,
-		PtrDATETIME:                  &TIMESTAMP,
-		PtrTIMESTAMP_SECOND:          &TIMESTAMP,
-		PtrTIMESTAMP_MILLISECOND:     &TIMESTAMP,
-		PtrTIMESTAMP_MICROSECOND:     &TIMESTAMP,
-		PtrTIMESTAMP_NANOSECOND:      &TIMESTAMP,
-		PtrDATE_INT:                  &DATE_INT,
-		PtrDATETIME_INT:              &DATETIME_INT,
-		PtrTIMESTAMP_SECOND_INT:      &TIMESTAMP_SECOND_INT,
-		PtrTIMESTAMP_MILLISECOND_INT: &TIMESTAMP_MILLISECOND_INT,
-		PtrTIMESTAMP_MICROSECOND_INT: &TIMESTAMP_MICROSECOND_INT,
-		PtrTIMESTAMP_NANOSECOND_INT:  &TIMESTAMP_NANOSECOND_INT,
-		PtrJSON:                      &JSON,
+		PtrINT16:        &INT16,
+		PtrUINT64:       &UINT64,
+		PtrFLOAT32:      &FLOAT32,
+		PtrSTRING:       &STRING,
+		PtrDATETIME_INT: &DATETIME_INT,
+		PtrJSON:         &JSON,
 
 		privateField: "private",
 	}

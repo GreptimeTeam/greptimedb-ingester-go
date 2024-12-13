@@ -25,6 +25,11 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
 
+const (
+	IgnoreFiledTag      = "-"
+	GreptimeFieldTagKey = "greptime"
+)
+
 type Schema struct {
 	tableName string
 
@@ -145,17 +150,17 @@ func (s *Schema) parseValues(input any) error {
 	}
 
 	visibleFields := reflect.VisibleFields(typ)
-	size := make([]reflect.StructField, 0, len(visibleFields))
-	values := make([]*gpb.Value, 0, len(size))
+	processingFields := make([]reflect.StructField, 0, len(visibleFields))
+	values := make([]*gpb.Value, 0, len(processingFields))
 
 	for _, structField := range visibleFields {
-		if !structField.IsExported() || structField.Tag.Get("greptime") == "-" {
+		if !structField.IsExported() || structField.Tag.Get(GreptimeFieldTagKey) == IgnoreFiledTag {
 			continue
 		}
-		size = append(size, structField)
+		processingFields = append(processingFields, structField)
 	}
 
-	for i, structField := range size {
+	for i, structField := range processingFields {
 		field := s.fields[i]
 		value, err := parseValue(field.Datatype, val.FieldByName(structField.Name))
 		if err != nil {
