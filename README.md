@@ -200,27 +200,28 @@ affected, err := cli.CloseStream(ctx)
 
 The **GreptimeDB** column is for the datatypes supported in library, and the **Go** column is the matched Go type.
 
-| GreptimeDB                       | Go               | Description                            |
-|----------------------------------|------------------|----------------------------------------|
-| INT8                             | int8             |                                        |
-| INT16                            | int16            |                                        |
-| INT32                            | int32            |                                        |
-| INT64, INT                       | int64            |                                        |
-| UINT8                            | uint8            |                                        |
-| UINT16                           | uint16           |                                        |
-| UINT32                           | uint32           |                                        |
-| UINT64, UINT                     | uint64           |                                        |
-| FLOAT32                          | float32          |                                        |
-| FLOAT64, FLOAT                   | float64          |                                        |
-| BOOLEAN, BOOL                    | bool             |                                        |
-| STRING                           | string           |                                        |
-| BINARY, BYTES                    | []byte           |                                        |
+| GreptimeDB                       | Go                 | Description                            |
+|----------------------------------|--------------------|----------------------------------------|
+| INT8                             | int8               |                                        |
+| INT16                            | int16              |                                        |
+| INT32                            | int32              |                                        |
+| INT64, INT                       | int64              |                                        |
+| UINT8                            | uint8              |                                        |
+| UINT16                           | uint16             |                                        |
+| UINT32                           | uint32             |                                        |
+| UINT64, UINT                     | uint64             |                                        |
+| FLOAT32                          | float32            |                                        |
+| FLOAT64, FLOAT                   | float64            |                                        |
+| BOOLEAN, BOOL                    | bool               |                                        |
+| STRING                           | string             |                                        |
+| BINARY, BYTES                    | []byte             |                                        |
 | DATE                             | *Int* or time.Time | the day elapsed since 1970-1-1         |
 | DATETIME                         | *Int* or time.Time | the millisecond elapsed since 1970-1-1 |
 | TIMESTAMP_SECOND                 | *Int* or time.Time |                                        |
 | TIMESTAMP_MILLISECOND, TIMESTAMP | *Int* or time.Time |                                        |
 | TIMESTAMP_MICROSECOND            | *Int* or time.Time |                                        |
 | TIMESTAMP_NANOSECOND             | *Int* or time.Time |                                        |
+| JSON                             | string             |                                        |
 
 NOTE: *Int* is for all of Integer and Unsigned Integer in Go
 

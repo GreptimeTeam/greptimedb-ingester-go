@@ -50,7 +50,7 @@ func newClient() (*client, error) {
 func main() {
 	c, err := newClient()
 	if err != nil {
-		log.Fatalf("failed to new client: %v:", err)
+		log.Fatalf("failed to new client: %v", err)
 	}
 
 	_, err = c.client.HealthCheck(context.Background())
