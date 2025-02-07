@@ -151,16 +151,10 @@ func (c *client) writeWithHint(data *table.Table) error {
 }
 
 func (c *client) writeWithHints(data *table.Table) error {
-	hints := []*ingesterContext.Hint{
-		{
-			Key:   "ttl",
-			Value: "1d",
-		},
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
+	hints := "ttl=1d, append_mode=true"
 	resp, err := c.client.Write(ingesterContext.New(ctx, ingesterContext.WithHints(hints)), data)
 	if err != nil {
 		return err
@@ -188,10 +182,10 @@ func main() {
 	}
 
 	if err = c.writeWithHint(data[0]); err != nil {
-		log.Fatalf("failed to write data with hint: %v", err)
+		log.Fatalf("failed to write data: %v", err)
 	}
 
 	if err = c.writeWithHints(data[1]); err != nil {
-		log.Fatalf("failed to write data with hints: %v", err)
+		log.Fatalf("failed to write data: %v", err)
 	}
 }
