@@ -16,12 +16,14 @@ package context
 
 import (
 	"context"
+	"strings"
 
 	"google.golang.org/grpc/metadata"
 )
 
 const (
-	hintPrefix = "x-greptime-hint-"
+	hintPrefix  = "x-greptime-hint-"
+	hintsPrefix = "x-greptime-hints"
 )
 
 type Hint struct {
@@ -39,12 +41,27 @@ func New(parent context.Context, opts ...Option) context.Context {
 	return ctx
 }
 
-func WithHints(hints []*Hint) Option {
+// WithHint formats hints as: 'x-greptime-hint-key: value'.
+func WithHint(hints []*Hint) Option {
 	return func(ctx context.Context) context.Context {
 		md := metadata.New(nil)
 		for _, hint := range hints {
 			md.Append(hintPrefix+hint.Key, hint.Value)
 		}
+		return metadata.NewOutgoingContext(ctx, md)
+	}
+}
+
+// WithHints formats hints as: 'x-greptime-hints: key1=value1,key2=value2'.
+func WithHints(hints []*Hint) Option {
+	return func(ctx context.Context) context.Context {
+		var hintPairs []string
+		md := metadata.New(nil)
+
+		for _, hint := range hints {
+			hintPairs = append(hintPairs, hint.Key+"="+hint.Value)
+		}
+		md.Append(hintsPrefix, strings.Join(hintPairs, ","))
 		return metadata.NewOutgoingContext(ctx, md)
 	}
 }
