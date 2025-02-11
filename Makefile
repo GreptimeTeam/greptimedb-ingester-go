@@ -13,20 +13,20 @@
 #    limitations under the License.
 
 ## Tool Versions
-KAW_KEYE_VERSION ?= v6.0.0
+KAWKEYE_VERSION ?= v6.0.0
 
 .PHONY: hawkeye
 hawkeye: ## Install hawkeye.
-	curl --proto '=https' --tlsv1.2 -LsSf https://github.com/korandoru/hawkeye/releases/download/${KAW_KEYE_VERSION}/hawkeye-installer.sh | sh
+	curl --proto '=https' --tlsv1.2 -LsSf https://github.com/korandoru/hawkeye/releases/download/${KAWKEYE_VERSION}/hawkeye-installer.sh | sh
 
-.PHONY: check-lincense
-check-lincense: ## Check License Header.
+.PHONY: check-lincense-header
+check-lincense-header: ## Check License Header.
 	hawkeye check
 
-.PHONY: format-lincense
-format-lincense: ## Format License Header.
+.PHONY: format-lincense-header
+format-lincense-header: ## Format License Header.
 	hawkeye format
 
-.PHONY: remove-lincense
-remove-lincense: ## Remove License Header.
+.PHONY: remove-lincense-header
+remove-lincense-header: ## Remove License Header.
 	hawkeye remove

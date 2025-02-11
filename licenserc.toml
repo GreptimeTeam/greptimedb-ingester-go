@@ -15,8 +15,8 @@
 # manually check and fix the license declaration
 #
 # make hawkeye
-# make check-lincense
-# make format-lincense
+# make check-lincense-header
+# make format-lincense-header
 
 headerPath = "LICENSE"
 
@@ -34,5 +34,5 @@ inceptionYear = 2024
 copyrightOwner = "Greptime Team"
 
 [git]
-attrs = 'auto'
+attrs = 'enable'
 ignore = 'auto'
