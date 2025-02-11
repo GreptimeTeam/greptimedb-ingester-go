@@ -1,9 +1,0 @@
-## cat codecov.yml | curl --data-binary @- https://codecov.io/validate
-coverage:
-  status:
-    project:
-      default:
-        informational: true
-    patch:
-      default:
-        informational: true

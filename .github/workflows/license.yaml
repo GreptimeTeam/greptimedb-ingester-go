@@ -1,4 +1,4 @@
-#    Copyright 2024 Greptime Team
+#    Copyright none Greptime Team
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -12,23 +12,24 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-name: Check PR Title
+name: License Checker
 
 on:
-  pull_request_target:
-    types:
-      - opened
-      - edited
-      - synchronize
-      - labeled
-      - unlabeled
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+  push:
+    branches:
+      - "main"
 
 jobs:
-  check-pr-title:
+  license-header-check:
+    name: license-header-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
-      - uses: thehanimo/pr-title-checker@v1.4.3
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          pass_on_octokit_error: false
-          configuration_path: ".github/pr-title-checker-config.json"
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Check License Header
+      uses: korandoru/hawkeye@v6

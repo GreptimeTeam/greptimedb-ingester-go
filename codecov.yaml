@@ -1,4 +1,4 @@
-#    Copyright 2024 Greptime Team
+#    Copyright none Greptime Team
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -12,23 +12,12 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-name: Check PR Title
-
-on:
-  pull_request_target:
-    types:
-      - opened
-      - edited
-      - synchronize
-      - labeled
-      - unlabeled
-
-jobs:
-  check-pr-title:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: thehanimo/pr-title-checker@v1.4.3
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          pass_on_octokit_error: false
-          configuration_path: ".github/pr-title-checker-config.json"
+## cat codecov.yaml | curl --data-binary @- https://codecov.io/validate
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true

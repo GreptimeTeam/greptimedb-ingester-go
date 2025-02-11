@@ -1,4 +1,4 @@
-#    Copyright 2024 Greptime Team
+#    Copyright none Greptime Team
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -12,23 +12,21 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-name: Check PR Title
+## Tool Versions
+KAW_KEYE_VERSION ?= v6.0.0
 
-on:
-  pull_request_target:
-    types:
-      - opened
-      - edited
-      - synchronize
-      - labeled
-      - unlabeled
+.PHONY: hawkeye
+hawkeye: ## Install hawkeye.
+	curl --proto '=https' --tlsv1.2 -LsSf https://github.com/korandoru/hawkeye/releases/download/${KAW_KEYE_VERSION}/hawkeye-installer.sh | sh
 
-jobs:
-  check-pr-title:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: thehanimo/pr-title-checker@v1.4.3
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          pass_on_octokit_error: false
-          configuration_path: ".github/pr-title-checker-config.json"
+.PHONY: check-lincense
+check-lincense: ## Check License Header.
+	hawkeye check
+
+.PHONY: format-lincense
+format-lincense: ## Format License Header.
+	hawkeye format
+
+.PHONY: remove-lincense
+remove-lincense: ## Remove License Header.
+	hawkeye remove
