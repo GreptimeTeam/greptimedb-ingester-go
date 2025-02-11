@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-name: License Checker
+name: License Check
 
 on:
   pull_request:
@@ -32,4 +32,8 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Check License Header
-      uses: korandoru/hawkeye@v6
+      shell: bash
+      run: |
+        make hawkeye
+        make check-lincense
+        
