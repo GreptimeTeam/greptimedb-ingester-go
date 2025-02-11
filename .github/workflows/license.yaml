@@ -32,7 +32,4 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Check License Header
-      shell: bash
-      run: |
-        make hawkeye
-        make check-lincense-header
+      uses: korandoru/hawkeye@v6

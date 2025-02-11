@@ -21,12 +21,12 @@ hawkeye: ## Install hawkeye.
 
 .PHONY: check-lincense-header
 check-lincense-header: ## Check License Header.
-	hawkeye check
+	hawkeye check --config licenserc.toml
 
 .PHONY: format-lincense-header
 format-lincense-header: ## Format License Header.
-	hawkeye format
+	hawkeye format --config licenserc.toml
 
 .PHONY: remove-lincense-header
 remove-lincense-header: ## Remove License Header.
-	hawkeye remove
+	hawkeye remove --config licenserc.toml
