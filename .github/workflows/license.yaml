@@ -33,5 +33,8 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Ensure Full Git History
+      run: git fetch --prune --unshallow
+
     - name: Check License Header
       uses: korandoru/hawkeye@v6
