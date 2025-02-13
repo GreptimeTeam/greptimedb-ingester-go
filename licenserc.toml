@@ -3,7 +3,7 @@
 # make check-lincense-header
 # make format-lincense-header
 
-headerPath = "license-header.txt"
+headerPath = "hack/license-header.txt"
 
 baseDir = "."
 
