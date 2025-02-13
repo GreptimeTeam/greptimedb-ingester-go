@@ -1,10 +1,9 @@
 # manually check and fix the license declaration
 #
-# make hawkeye
 # make check-lincense-header
 # make format-lincense-header
 
-headerPath = "LICENSE"
+headerPath = "license-header.txt"
 
 baseDir = "."
 
