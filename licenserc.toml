@@ -1,21 +1,19 @@
 # manually check and fix the license declaration
 #
-# make check-lincense-header
-# make format-lincense-header
+# make hawkeye
+# make check-license
+# make format-license
 
 headerPath = "hack/license-header.txt"
 
 baseDir = "."
 
 includes = [
-    '*.go'
-    #'*.yaml',
-    #'Makefile',
-    #'*.toml'
+    '*.go',
+    'Makefile'
 ]
 
 [properties]
-inceptionYear = 2024
 copyrightOwner = "Greptime Team"
 
 [git]
