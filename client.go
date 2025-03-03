@@ -43,7 +43,7 @@ type Client struct {
 
 // NewClient helps to create the greptimedb client, which will be responsible write data into GreptimeDB.
 func NewClient(cfg *Config) (*Client, error) {
-	conn, err := grpc.Dial(cfg.endpoint(), cfg.build()...)
+	conn, err := grpc.NewClient(cfg.endpoint(), cfg.build()...)
 	if err != nil {
 		return nil, err
 	}

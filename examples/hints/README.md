@@ -10,10 +10,10 @@ Output:
 
 ```log
 go run main.go 
-2025/02/07 22:46:46 create table, name: 'monitor_table_with_hint'
-2025/02/07 22:46:46 affected rows: 3
-2025/02/07 22:46:46 create table, name: 'monitor_table_with_hints'
-2025/02/07 22:46:46 affected rows: 3
+2025/02/07 14:46:46 create table, name: 'monitor_table_with_hint'
+2025/02/07 14:46:46 affected rows: 3
+2025/02/07 14:46:46 create table, name: 'monitor_table_with_hints'
+2025/02/07 14:46:46 affected rows: 3
 ```
 
 ## Query
