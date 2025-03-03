@@ -9,9 +9,9 @@ go run main.go
 Output:
 
 ```log
-2024/11/27 22:26:54 affected rows: 1
-2024/11/27 22:26:54 affected rows: 1
-2024/11/27 22:26:54 affected rows: 1
+2024/11/27 14:26:54 affected rows: 1
+2024/11/27 14:26:54 affected rows: 1
+2024/11/27 14:26:54 affected rows: 1
 ```
 
 ## Query
