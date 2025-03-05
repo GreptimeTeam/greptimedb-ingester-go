@@ -9,12 +9,12 @@ go run main.go
 Output:
 
 ```log
-2024/11/13 19:15:23 affected rows: 4
-2024/11/13 19:15:23 affected rows: 4
-2024/11/13 19:15:23 affected rows: 1
-2024/11/13 19:15:23 affected rows: 4
-2024/11/13 19:15:23 affected rows: 4
-2024/11/13 19:15:23 affected rows: 1
+2024/11/13 11:15:23 affected rows: 4
+2024/11/13 11:15:23 affected rows: 4
+2024/11/13 11:15:23 affected rows: 1
+2024/11/13 11:15:23 affected rows: 4
+2024/11/13 11:15:23 affected rows: 4
+2024/11/13 11:15:23 affected rows: 1
 ```
 
 ## Query
