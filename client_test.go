@@ -50,6 +50,10 @@ var (
 	host                          = "127.0.0.1"
 	httpPort, grpcPort, mysqlPort = 4000, 4001, 4002
 
+	// The GreptimeDB image.
+	repository = "greptime/greptimedb"
+	tag        = "latest"
+
 	cli *Client
 	db  *Mysql
 )
@@ -190,19 +194,16 @@ func newMysql() *Mysql {
 }
 
 func init() {
-	repo := "greptime/greptimedb"
-	tag := "v0.9.5"
-
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		log.Fatalln("Could not connect to docker: " + err.Error())
 	}
 
-	log.Printf("Preparing container %s:%s\n", repo, tag)
+	log.Printf("Preparing container %s:%s\n", repository, tag)
 
 	// pulls an image, creates a container based on it and runs it
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository:   repo,
+		Repository:   repository,
 		Tag:          tag,
 		ExposedPorts: []string{"4000", "4001", "4002"},
 		Entrypoint: []string{"greptime", "standalone", "start",
