@@ -188,7 +188,7 @@ func ParseColumnType(type_, precision string) (gpb.ColumnDataType, error) {
 	case DATE.String():
 		return gpb.ColumnDataType_DATE, nil
 	case DATETIME.String():
-		return gpb.ColumnDataType_DATETIME, nil
+		return gpb.ColumnDataType_TIMESTAMP_MICROSECOND, nil
 	case TIMESTAMP.String():
 		return ParseTimestampPrecision(precision), nil
 	case TIMESTAMP_SECOND.String():
@@ -237,7 +237,7 @@ func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 	case DATE:
 		return gpb.ColumnDataType_DATE, nil
 	case DATETIME:
-		return gpb.ColumnDataType_DATETIME, nil
+		return gpb.ColumnDataType_TIMESTAMP_MICROSECOND, nil
 	case TIMESTAMP_SECOND:
 		return gpb.ColumnDataType_TIMESTAMP_SECOND, nil
 	case TIMESTAMP_MILLISECOND, TIMESTAMP:

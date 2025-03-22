@@ -59,7 +59,7 @@ func (c Cell) Build() (*gpb.Value, error) {
 	case gpb.ColumnDataType_DATE:
 		return BuildDate(c.Val)
 	case gpb.ColumnDataType_DATETIME:
-		return BuildDateTime(c.Val)
+		return BuildTimestampMicrosecond(c.Val)
 
 	case gpb.ColumnDataType_TIMESTAMP_SECOND:
 		return BuildTimestampSecond(c.Val)

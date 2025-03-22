@@ -40,6 +40,7 @@ type Monitor struct {
 	Temperature int64     `greptime:"field;column:temperature;type:int64"`
 	Running     bool      `greptime:"field;column:running;type:boolean"`
 	Ts          time.Time `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
+	DTT         time.Time `greptime:"field;column:dtt;type:datetime"`
 }
 
 type client struct {
@@ -72,6 +73,7 @@ func initData() []Monitor {
 			Cpu:         1.3,
 			Temperature: -1,
 			Ts:          time.Now(),
+			DTT:         time.Now(),
 		},
 		{
 			ID:          1,
@@ -81,6 +83,7 @@ func initData() []Monitor {
 			Temperature: -1,
 			Ts:          time.Now(),
 			Running:     true,
+			DTT:         time.Now(),
 		},
 		{
 			ID:          2,
@@ -90,6 +93,7 @@ func initData() []Monitor {
 			Temperature: -2,
 			Ts:          time.Now(),
 			Running:     true,
+			DTT:         time.Now(),
 		},
 		{
 			ID:          3,
@@ -99,6 +103,7 @@ func initData() []Monitor {
 			Temperature: -3,
 			Ts:          time.Now(),
 			Running:     true,
+			DTT:         time.Now(),
 		},
 	}
 }
