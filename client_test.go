@@ -701,13 +701,12 @@ func TestInsertMonitorWithNilFields(t *testing.T) {
 	assert.Zero(t, monitor_.Temperature)
 }
 
-func TestInsertAllDatatypes(t *testing.T) {
+func TestInsertAllDataTypes(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 
 	time_ := time.Now().In(loc)
 	date_int := time_.Unix() / 86400
-	//datetime_int := time_.UnixMilli()
 
 	INT8 := 1
 	INT16 := 2
@@ -742,14 +741,14 @@ func TestInsertAllDatatypes(t *testing.T) {
 	assert.Nil(t, table.AddFieldColumn("string", types.STRING))
 
 	assert.Nil(t, table.AddFieldColumn("date", types.DATE))
-	//assert.Nil(t, table.AddFieldColumn("datetime", types.DATETIME))
+	assert.Nil(t, table.AddFieldColumn("datetime", types.DATETIME))
 	assert.Nil(t, table.AddFieldColumn("timestamp_second", types.TIMESTAMP_SECOND))
 	assert.Nil(t, table.AddFieldColumn("timestamp_millisecond", types.TIMESTAMP_MILLISECOND))
 	assert.Nil(t, table.AddFieldColumn("timestamp_microsecond", types.TIMESTAMP_MICROSECOND))
 	assert.Nil(t, table.AddFieldColumn("timestamp_nanosecond", types.TIMESTAMP_NANOSECOND))
 
 	assert.Nil(t, table.AddFieldColumn("date_int", types.DATE))
-	//assert.Nil(t, table.AddFieldColumn("datetime_int", types.DATETIME))
+	assert.Nil(t, table.AddFieldColumn("datetime_int", types.DATETIME))
 	assert.Nil(t, table.AddFieldColumn("timestamp_second_int", types.TIMESTAMP_SECOND))
 	assert.Nil(t, table.AddFieldColumn("timestamp_millisecond_int", types.TIMESTAMP_MILLISECOND))
 	assert.Nil(t, table.AddFieldColumn("timestamp_microsecond_int", types.TIMESTAMP_MICROSECOND))
@@ -764,10 +763,10 @@ func TestInsertAllDatatypes(t *testing.T) {
 		BOOLEAN, FLOAT32, FLOAT64,
 		BINARY, STRING,
 
-		time_,                      //time_, // date and datetime
+		time_, time_, // date and datetime
 		time_, time_, time_, time_, // timestamp
 
-		date_int,                                                             //datetime_int, // date and datetime
+		date_int, time_.UnixMicro(), // date and datetime
 		time_.Unix(), time_.UnixMilli(), time_.UnixMicro(), time_.UnixNano(), // timestamp
 
 		time_,
@@ -800,7 +799,7 @@ func TestInsertAllDatatypes(t *testing.T) {
 	assert.EqualValues(t, STRING, result.STRING)
 
 	assert.Equal(t, time_.Format("2006-01-02"), result.DATE.Format("2006-01-02"))
-	//assert.Equal(t, time_.Format("2006-01-02 15:04:05"), result.DATETIME.Format("2006-01-02 15:04:05"))
+	assert.Equal(t, time_.UnixMicro(), result.DATETIME.UnixMicro())
 	assert.Equal(t, time_.Unix(), result.TIMESTAMP_SECOND.Unix())
 	assert.Equal(t, time_.UnixMilli(), result.TIMESTAMP_MILLISECOND.UnixMilli())
 	assert.Equal(t, time_.UnixMicro(), result.TIMESTAMP_MICROSECOND.UnixMicro())
@@ -809,7 +808,7 @@ func TestInsertAllDatatypes(t *testing.T) {
 	assert.EqualValues(t, time_.UnixNano()/1000, result.TIMESTAMP_NANOSECOND.UnixNano()/1000)
 
 	assert.Equal(t, time_.Format("2006-01-02"), result.DATE_INT.Format("2006-01-02"))
-	//assert.Equal(t, time_.Format("2006-01-02 15:04:05"), result.DATETIME_INT.Format("2006-01-02 15:04:05"))
+	assert.Equal(t, time_.UnixMicro(), result.DATETIME_INT.UnixMicro())
 	assert.Equal(t, time_.Unix(), result.TIMESTAMP_SECOND_INT.Unix())
 	assert.Equal(t, time_.UnixMilli(), result.TIMESTAMP_MILLISECOND_INT.UnixMilli())
 	assert.Equal(t, time_.UnixMicro(), result.TIMESTAMP_MICROSECOND_INT.UnixMicro())
