@@ -50,6 +50,10 @@ var (
 	host                          = "127.0.0.1"
 	httpPort, grpcPort, mysqlPort = 4000, 4001, 4002
 
+	// The GreptimeDB image.
+	repository = "greptime/greptimedb"
+	tag        = "latest"
+
 	cli *Client
 	db  *Mysql
 )
@@ -69,6 +73,7 @@ type datatype struct {
 	FLOAT64 float64 `gorm:"column:float64"`
 	BINARY  []byte  `gorm:"column:binary"`
 	STRING  string  `gorm:"column:string"`
+	JSON    string  `gorm:"column:json"`
 
 	DATE                  time.Time `gorm:"column:date"`
 	DATETIME              time.Time `gorm:"column:datetime"`
@@ -190,19 +195,16 @@ func newMysql() *Mysql {
 }
 
 func init() {
-	repo := "greptime/greptimedb"
-	tag := "v0.9.5"
-
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		log.Fatalln("Could not connect to docker: " + err.Error())
 	}
 
-	log.Printf("Preparing container %s:%s\n", repo, tag)
+	log.Printf("Preparing container %s:%s\n", repository, tag)
 
 	// pulls an image, creates a container based on it and runs it
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository:   repo,
+		Repository:   repository,
 		Tag:          tag,
 		ExposedPorts: []string{"4000", "4001", "4002"},
 		Entrypoint: []string{"greptime", "standalone", "start",
@@ -699,13 +701,12 @@ func TestInsertMonitorWithNilFields(t *testing.T) {
 	assert.Zero(t, monitor_.Temperature)
 }
 
-func TestInsertAllDatatypes(t *testing.T) {
+func TestInsertAllDataTypes(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 
 	time_ := time.Now().In(loc)
 	date_int := time_.Unix() / 86400
-	datetime_int := time_.UnixMilli()
 
 	INT8 := 1
 	INT16 := 2
@@ -720,6 +721,7 @@ func TestInsertAllDatatypes(t *testing.T) {
 	FLOAT64 := 10.0
 	BINARY := []byte{1, 2, 3}
 	STRING := "string"
+	JSON := `{"city":"New York","description":"Partly cloudy","temperature":22}`
 
 	table, err := tbl.New(datatypesTableName)
 	assert.Nil(t, err)
@@ -753,6 +755,7 @@ func TestInsertAllDatatypes(t *testing.T) {
 	assert.Nil(t, table.AddFieldColumn("timestamp_nanosecond_int", types.TIMESTAMP_NANOSECOND))
 
 	assert.Nil(t, table.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND))
+	assert.Nil(t, table.AddFieldColumn("json", types.JSON))
 
 	// with all fields
 	err = table.AddRow(INT8, INT16, INT32, INT64,
@@ -763,10 +766,12 @@ func TestInsertAllDatatypes(t *testing.T) {
 		time_, time_, // date and datetime
 		time_, time_, time_, time_, // timestamp
 
-		date_int, datetime_int, // date and datetime
+		date_int, time_.UnixMicro(), // date and datetime
 		time_.Unix(), time_.UnixMilli(), time_.UnixMicro(), time_.UnixNano(), // timestamp
 
-		time_)
+		time_,
+		JSON)
+
 	assert.Nil(t, err)
 
 	resp, err := cli.Write(context.Background(), table)
@@ -794,7 +799,7 @@ func TestInsertAllDatatypes(t *testing.T) {
 	assert.EqualValues(t, STRING, result.STRING)
 
 	assert.Equal(t, time_.Format("2006-01-02"), result.DATE.Format("2006-01-02"))
-	assert.Equal(t, time_.Format("2006-01-02 15:04:05"), result.DATETIME.Format("2006-01-02 15:04:05"))
+	assert.Equal(t, time_.UnixMicro(), result.DATETIME.UnixMicro())
 	assert.Equal(t, time_.Unix(), result.TIMESTAMP_SECOND.Unix())
 	assert.Equal(t, time_.UnixMilli(), result.TIMESTAMP_MILLISECOND.UnixMilli())
 	assert.Equal(t, time_.UnixMicro(), result.TIMESTAMP_MICROSECOND.UnixMicro())
@@ -803,13 +808,14 @@ func TestInsertAllDatatypes(t *testing.T) {
 	assert.EqualValues(t, time_.UnixNano()/1000, result.TIMESTAMP_NANOSECOND.UnixNano()/1000)
 
 	assert.Equal(t, time_.Format("2006-01-02"), result.DATE_INT.Format("2006-01-02"))
-	assert.Equal(t, time_.Format("2006-01-02 15:04:05"), result.DATETIME_INT.Format("2006-01-02 15:04:05"))
+	assert.Equal(t, time_.UnixMicro(), result.DATETIME_INT.UnixMicro())
 	assert.Equal(t, time_.Unix(), result.TIMESTAMP_SECOND_INT.Unix())
 	assert.Equal(t, time_.UnixMilli(), result.TIMESTAMP_MILLISECOND_INT.UnixMilli())
 	assert.Equal(t, time_.UnixMicro(), result.TIMESTAMP_MICROSECOND_INT.UnixMicro())
 
 	// MySQL protocol only supports microsecond precision for TIMESTAMP
 	assert.EqualValues(t, time_.UnixNano()/1000, result.TIMESTAMP_NANOSECOND_INT.UnixNano()/1000)
+	assert.EqualValues(t, JSON, result.JSON)
 }
 
 func TestStreamWrite(t *testing.T) {

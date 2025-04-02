@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/greptimeteam/greptimedb-ingester-go/actions/workflows/ci.yml/badge.svg)](https://github.com/GreptimeTeam/greptimedb-ingester-go/blob/main/.github/workflows/ci.yml)
+[![Build Status](https://github.com/greptimeteam/greptimedb-ingester-go/actions/workflows/ci.yaml/badge.svg)](https://github.com/GreptimeTeam/greptimedb-ingester-go/blob/main/.github/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/GreptimeTeam/greptimedb-ingester-go/branch/main/graph/badge.svg?token=76KIKITADQ)](https://codecov.io/gh/GreptimeTeam/greptimedb-ingester-go)
 [![Go Reference](https://pkg.go.dev/badge/github.com/GreptimeTeam/greptimedb-ingester-go.svg)](https://pkg.go.dev/github.com/GreptimeTeam/greptimedb-ingester-go)
 
@@ -202,28 +202,28 @@ affected, err := cli.CloseStream(ctx)
 
 The **GreptimeDB** column is for the datatypes supported in library, and the **Go** column is the matched Go type.
 
-| GreptimeDB                       | Go                 | Description                            |
-|----------------------------------|--------------------|----------------------------------------|
-| INT8                             | int8               |                                        |
-| INT16                            | int16              |                                        |
-| INT32                            | int32              |                                        |
-| INT64, INT                       | int64              |                                        |
-| UINT8                            | uint8              |                                        |
-| UINT16                           | uint16             |                                        |
-| UINT32                           | uint32             |                                        |
-| UINT64, UINT                     | uint64             |                                        |
-| FLOAT32                          | float32            |                                        |
-| FLOAT64, FLOAT                   | float64            |                                        |
-| BOOLEAN, BOOL                    | bool               |                                        |
-| STRING                           | string             |                                        |
-| BINARY, BYTES                    | []byte             |                                        |
-| DATE                             | *Int* or time.Time | the day elapsed since 1970-1-1         |
-| DATETIME                         | *Int* or time.Time | the millisecond elapsed since 1970-1-1 |
-| TIMESTAMP_SECOND                 | *Int* or time.Time |                                        |
-| TIMESTAMP_MILLISECOND, TIMESTAMP | *Int* or time.Time |                                        |
-| TIMESTAMP_MICROSECOND            | *Int* or time.Time |                                        |
-| TIMESTAMP_NANOSECOND             | *Int* or time.Time |                                        |
-| JSON                             | string             |                                        |
+| GreptimeDB                       | Go                 | Description                                                                                                                |
+|----------------------------------|--------------------|----------------------------------------------------------------------------------------------------------------------------|
+| INT8                             | int8               | -128 ~ 127                                                                                                                 |
+| INT16                            | int16              | -32768 ~ 32767                                                                                                             |
+| INT32                            | int32              | -2147483648 ~ 2147483647                                                                                                   |
+| INT64, INT                       | int64              | -9223372036854775808 ~ 9223372036854775807                                                                                 |
+| UINT8                            | uint8              | 0 ~ 255                                                                                                                    |
+| UINT16                           | uint16             | 0 ~ 65535                                                                                                                  |
+| UINT32                           | uint32             | 0 ~ 4294967295                                                                                                             |
+| UINT64, UINT                     | uint64             | 0 ~ 18446744073709551615                                                                                                   |
+| FLOAT32                          | float32            | 32-bit IEEE754 floating point values                                                                                       |
+| FLOAT64, FLOAT                   | float64            | Double precision IEEE 754 floating point values                                                                            |
+| BOOLEAN, BOOL                    | bool               | TRUE or FALSE bool values                                                                                                  |
+| STRING                           | string             | UTF-8 encoded strings. Holds up to 2,147,483,647 bytes of data                                                             |
+| BINARY, BYTES                    | []byte             | Variable-length binary values. Holds up to 2,147,483,647 bytes of data                                                     |
+| DATE                             | *Int* or time.Time | 32-bit date values represent the days since UNIX Epoch                                                                     |
+| DATETIME                         | *Int* or time.Time | 64-bit timestamp values with microseconds precision, equivalent to TimestampMicrosecond                                    |
+| TIMESTAMP_SECOND                 | *Int* or time.Time | 64-bit timestamp values with seconds precision, range: [-262144-01-01 00:00:00, +262143-12-31 23:59:59]                    |
+| TIMESTAMP_MILLISECOND, TIMESTAMP | *Int* or time.Time | 64-bit timestamp values with milliseconds precision, range: [-262144-01-01 00:00:00.000, +262143-12-31 23:59:59.999]       |
+| TIMESTAMP_MICROSECOND            | *Int* or time.Time | 64-bit timestamp values with microseconds precision, range: [-262144-01-01 00:00:00.000000, +262143-12-31 23:59:59.999999] |
+| TIMESTAMP_NANOSECOND             | *Int* or time.Time | 64-bit timestamp values with nanoseconds precision, range: [1677-09-21 00:12:43.145225, 2262-04-11 23:47:16.854775807]     |
+| JSON                             | string             | JSON data                                                                                                                  |
 
 NOTE: *Int* is for all of Integer and Unsigned Integer in Go
 

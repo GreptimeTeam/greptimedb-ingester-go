@@ -350,6 +350,7 @@ func BuildDate(v any) (*gpb.Value, error) {
 	return &gpb.Value{ValueData: &gpb.Value_DateValue{DateValue: val}}, nil
 }
 
+// BuildDateTime is replaced by BuildTimestampMicrosecond. Refer to: https://github.com/GreptimeTeam/greptimedb/pull/5506.
 func BuildDateTime(v any) (*gpb.Value, error) {
 	t, i, err := getTimeOrInteger(v)
 	if err != nil {
