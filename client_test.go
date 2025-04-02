@@ -804,7 +804,7 @@ func TestInsertAllDataTypes(t *testing.T) {
 	assert.Equal(t, time_.UnixMilli(), result.TIMESTAMP_MILLISECOND.UnixMilli())
 	assert.Equal(t, time_.UnixMicro(), result.TIMESTAMP_MICROSECOND.UnixMicro())
 
-	// MySQL Protocol only supports microsecond precision for TIMESTAMP
+	// MySQL protocol only supports microsecond precision for TIMESTAMP
 	assert.EqualValues(t, time_.UnixNano()/1000, result.TIMESTAMP_NANOSECOND.UnixNano()/1000)
 
 	assert.Equal(t, time_.Format("2006-01-02"), result.DATE_INT.Format("2006-01-02"))
@@ -813,7 +813,7 @@ func TestInsertAllDataTypes(t *testing.T) {
 	assert.Equal(t, time_.UnixMilli(), result.TIMESTAMP_MILLISECOND_INT.UnixMilli())
 	assert.Equal(t, time_.UnixMicro(), result.TIMESTAMP_MICROSECOND_INT.UnixMicro())
 
-	// MySQL Protocol only supports microsecond precision for TIMESTAMP
+	// MySQL protocol only supports microsecond precision for TIMESTAMP
 	assert.EqualValues(t, time_.UnixNano()/1000, result.TIMESTAMP_NANOSECOND_INT.UnixNano()/1000)
 	assert.EqualValues(t, JSON, result.JSON)
 }
