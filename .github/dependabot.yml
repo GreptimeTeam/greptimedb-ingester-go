@@ -11,6 +11,6 @@ updates:
     schedule:
       interval: "daily"
       time: '10:00'
-      timezone: 'Asia/Shanghai'
+      timezone: 'Asia/Shanghai' # (UTC +08:00)
     labels:
       - "dependencies"
