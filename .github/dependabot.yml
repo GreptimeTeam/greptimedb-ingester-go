@@ -6,8 +6,11 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
+    # Update manifest files stored in the root directory daily
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "wednesday"
-      time: "08:00"
+      interval: "daily"
+      time: '10:00'
+      timezone: 'Asia/Shanghai'
+    labels:
+      - "dependencies"
