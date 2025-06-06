@@ -208,5 +208,4 @@ func main() {
 	c.streamWrite(data[UPDATE])
 	// stream delete
 	c.streamDelete(data[DELETE])
-
 }
