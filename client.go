@@ -309,7 +309,8 @@ func (c *Client) HealthCheck(ctx context.Context) (*gpb.HealthCheckResponse, err
 // Call this method when the client is no longer needed.
 func (c *Client) Close() error {
 	if c.conn != nil {
-		err := c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+		}
 		if err != nil {
 			return err
 		}
