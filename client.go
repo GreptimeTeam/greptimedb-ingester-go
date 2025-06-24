@@ -310,8 +310,6 @@ func (c *Client) HealthCheck(ctx context.Context) (*gpb.HealthCheckResponse, err
 func (c *Client) Close() error {
 	if c.conn != nil {
 		if err := c.conn.Close(); err != nil {
-		}
-		if err != nil {
 			return err
 		}
 		c.conn = nil
