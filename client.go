@@ -308,16 +308,6 @@ func (c *Client) HealthCheck(ctx context.Context) (*gpb.HealthCheckResponse, err
 // Close terminates the gRPC connection.
 // Call this method when the client is no longer needed.
 func (c *Client) Close() error {
-	// Close the stream if it's open
-	if c.stream != nil {
-		_, err := c.stream.CloseAndRecv()
-		if err != nil {
-			return err
-		}
-		c.stream = nil
-	}
-
-	// Close the connection
 	if c.conn != nil {
 		err := c.conn.Close()
 		if err != nil {
