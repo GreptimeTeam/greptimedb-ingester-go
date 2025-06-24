@@ -182,6 +182,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to new client: %v", err)
 	}
+	defer c.client.Close()
 
 	if err = c.writeWithHint(data[0]); err != nil {
 		log.Fatalf("failed to write data: %v", err)

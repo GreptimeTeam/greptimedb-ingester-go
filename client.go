@@ -32,12 +32,10 @@ import (
 // Client helps to write data into GreptimeDB. A Client is safe for concurrent
 // use by multiple goroutines,you can have one Client instance in your application.
 type Client struct {
-	cfg *Config
-
-	client gpb.GreptimeDatabaseClient
-
-	stream gpb.GreptimeDatabase_HandleRequestsClient
-
+	cfg               *Config
+	conn              *grpc.ClientConn
+	client            gpb.GreptimeDatabaseClient
+	stream            gpb.GreptimeDatabase_HandleRequestsClient
 	healthCheckClient gpb.HealthCheckClient
 }
 
@@ -54,6 +52,7 @@ func NewClient(cfg *Config) (*Client, error) {
 	return &Client{
 		cfg:               cfg,
 		client:            client,
+		conn:              conn,
 		healthCheckClient: healthCheckClient,
 	}, nil
 }
@@ -304,4 +303,28 @@ func (c *Client) HealthCheck(ctx context.Context) (*gpb.HealthCheckResponse, err
 	}
 
 	return resp, nil
+}
+
+// Close terminates the gRPC connection.
+// Call this method when the client is no longer needed.
+func (c *Client) Close() error {
+	// Close the stream if it's open
+	if c.stream != nil {
+		_, err := c.stream.CloseAndRecv()
+		if err != nil {
+			return err
+		}
+		c.stream = nil
+	}
+
+	// Close the connection
+	if c.conn != nil {
+		err := c.conn.Close()
+		if err != nil {
+			return err
+		}
+		c.conn = nil
+	}
+
+	return nil
 }
