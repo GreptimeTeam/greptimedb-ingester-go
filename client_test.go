@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ory/dockertest/v3"
 	dc "github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/mysql"
