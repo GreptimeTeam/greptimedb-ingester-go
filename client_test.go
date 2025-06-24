@@ -245,7 +245,6 @@ func init() {
 	log.Printf("Container started, http port: %d, grpc port: %d, mysql port: %d\n", httpPort, grpcPort, mysqlPort)
 
 	cli = newClient()
-	defer cli.Close()
 	db = newMysql()
 }
 
@@ -884,7 +883,6 @@ func TestStreamWrite(t *testing.T) {
 
 func TestStreamClose(t *testing.T) {
 	lc := newClient()
-	defer lc.Close()
 
 	affected, err := lc.CloseStream(context.Background())
 	assert.EqualValues(t, 0, affected.GetValue())
