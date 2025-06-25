@@ -3,7 +3,7 @@ module github.com/GreptimeTeam/greptimedb-ingester-go
 go 1.24.0
 
 require (
-	github.com/GreptimeTeam/greptime-proto v0.9.0
+	github.com/GreptimeTeam/greptime-proto v0.14.0
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/stoewer/go-strcase v1.3.0
