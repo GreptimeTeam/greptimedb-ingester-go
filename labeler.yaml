@@ -1,0 +1,7 @@
+example:
+  - changed-files:
+      - any-glob-to-any-file: examples/**
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: .github/**
