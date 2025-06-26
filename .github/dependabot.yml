@@ -9,8 +9,6 @@ updates:
     # Update manifest files stored in the root directory daily
     directory: "/"
     schedule:
-      interval: "daily"
-      time: '10:00'
-      timezone: 'Asia/Shanghai' # (UTC +08:00)
+      interval: "weekly"
     labels:
       - "dependencies"
