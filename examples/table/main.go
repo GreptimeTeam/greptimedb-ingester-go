@@ -190,6 +190,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to new client: %v", err)
 	}
+	defer c.client.Close()
 
 	data := initData()
 	// insert

@@ -72,6 +72,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to new client: %v", err)
 	}
+	defer c.client.Close()
 
 	tb, obj1, obj2, err := initData()
 	if err != nil {

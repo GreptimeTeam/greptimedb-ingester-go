@@ -48,7 +48,9 @@ cfg.WithKeepalive(time.Second*30, time.Second*5) // keepalive isn't enabled by d
 ### Client
 
 ```go
-cli, err := greptime.NewClient(cfg)
+c, err := greptime.NewClient(cfg)
+...
+defer c.client.Close()
 ```
 
 ### Insert & StreamInsert
@@ -86,7 +88,7 @@ err := tbl.AddRow(2, "127.0.0.2", time.Now())
 ##### Write into GreptimeDB
 
 ```go
-resp, err := cli.Write(context.Background(), tbl)
+resp, err := c.Write(context.Background(), tbl)
 ```
 
 ##### Delete from GreptimeDB
@@ -99,23 +101,23 @@ dtbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND)
 // timestamp is the time you want to delete row
 err := dtbl.AddRow(1, "127.0.0.1",timestamp)
 
-affected, err := cli.Delete(context.Background(),dtbl)
+affected, err := c.Delete(context.Background(),dtbl)
 ```
 
 ##### Stream Write into GreptimeDB
 
 ```go
-err := cli.StreamWrite(context.Background(), tbl)
+err := c.StreamWrite(context.Background(), tbl)
 ...
-affected, err := cli.CloseStream(ctx)
+affected, err := c.CloseStream(ctx)
 ```
 
 ##### Stream Delete from GreptimeDB
 
 ```go
-err := cli.StreamDelete(context.Background(), tbl)
+err := c.StreamDelete(context.Background(), tbl)
 ...
-affected, err := cli.CloseStream(ctx)
+affected, err := c.CloseStream(ctx)
 ```
 
 #### ORM style
@@ -169,7 +171,7 @@ monitors := []Monitor{
 ##### WriteObject into GreptimeDB
 
 ```go
-resp, err := cli.WriteObject(context.Background(), monitors)
+resp, err := c.WriteObject(context.Background(), monitors)
 ```
 
 ##### DeleteObject in GreptimeDB
@@ -177,15 +179,15 @@ resp, err := cli.WriteObject(context.Background(), monitors)
 ```go
 deleteMonitors := monitors[:1]
 
-affected, err := cli.DeleteObject(context.Background(), deleteMonitors)
+affected, err := c.DeleteObject(context.Background(), deleteMonitors)
 ```
 
 ##### Stream WriteObject into GreptimeDB
 
 ```go
-err := cli.StreamWriteObject(context.Background(), monitors)
+err := c.StreamWriteObject(context.Background(), monitors)
 ...
-affected, err := cli.CloseStream(ctx)
+affected, err := c.CloseStream(ctx)
 ```
 
 ##### Stream DeleteObject in GreptimeDB
@@ -193,9 +195,9 @@ affected, err := cli.CloseStream(ctx)
 ```go
 deleteMonitors := monitors[:1]
 
-err := cli.StreamDeleteObject(context.Background(), deleteMonitors)
+err := c.StreamDeleteObject(context.Background(), deleteMonitors)
 ...
-affected, err := cli.CloseStream(ctx)
+affected, err := c.CloseStream(ctx)
 ```
 
 ## Datatypes supported
