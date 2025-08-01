@@ -1228,3 +1228,66 @@ func TestStreamDeleteObj(t *testing.T) {
 		assert.Equal(t, monitors[i], monitor_)
 	}
 }
+
+func TestBulkWriteMonitors(t *testing.T) {
+	loc, err := time.LoadLocation(timezone)
+	assert.Nil(t, err)
+	ts1 := time.Now().Add(-1 * time.Minute).UnixMilli()
+	time1 := time.UnixMilli(ts1).In(loc)
+	ts2 := time.Now().Add(-2 * time.Minute).UnixMilli()
+	time2 := time.UnixMilli(ts2).In(loc)
+
+	monitors := []monitor{
+		{
+			ID:          randomId(),
+			Host:        "10.0.0.1",
+			Memory:      3,
+			Cpu:         2.0,
+			Temperature: 22,
+			Ts:          time1,
+			Running:     true,
+		},
+		{
+			ID:          randomId(),
+			Host:        "10.0.0.2",
+			Memory:      5,
+			Cpu:         5.0,
+			Temperature: 30,
+			Ts:          time2,
+			Running:     true,
+		},
+	}
+
+	table, err := tbl.New(monitorTableName)
+	assert.Nil(t, err)
+
+	assert.Nil(t, table.AddTagColumn("id", types.INT64))
+	assert.Nil(t, table.AddTagColumn("host", types.STRING))
+	assert.Nil(t, table.AddFieldColumn("memory", types.UINT64))
+	assert.Nil(t, table.AddFieldColumn("cpu", types.FLOAT64))
+	assert.Nil(t, table.AddFieldColumn("temperature", types.INT64))
+	assert.Nil(t, table.AddFieldColumn("running", types.BOOLEAN))
+	assert.Nil(t, table.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND))
+
+	for _, monitor := range monitors {
+		err := table.AddRow(monitor.ID, monitor.Host,
+			monitor.Memory, monitor.Cpu, monitor.Temperature, monitor.Running,
+			monitor.Ts)
+		assert.Nil(t, err)
+	}
+
+	resp, err := cli.BulkWrite(context.Background(), table)
+	assert.Nil(t, err)
+	assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
+	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
+	assert.Equal(t, uint32(len(monitors)), resp.GetAffectedRows().GetValue())
+
+	monitors_, err := db.Query(fmt.Sprintf("select * from %s where id in %s order by host asc", monitorTableName, getMonitorsIds(monitors)))
+	assert.Nil(t, err)
+
+	assert.Equal(t, len(monitors), len(monitors_))
+
+	for i, monitor_ := range monitors_ {
+		assert.Equal(t, monitors[i], monitor_)
+	}
+}
