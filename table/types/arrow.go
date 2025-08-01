@@ -40,7 +40,7 @@ func (c *ArrowConverter) ToArrow(rows *gpb.Rows) (arrow.Record, error) {
 	if rows == nil || len(rows.Rows) == 0 {
 		return nil, errors.New("no rows provided")
 	}
-	if rows.Schema == nil || len(rows.Schema) == 0 {
+	if rows == nil || rows.Schema == nil || len(rows.Schema) == 0 {
 		return nil, errors.New("no schema provided")
 	}
 
