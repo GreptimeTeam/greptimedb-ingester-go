@@ -19,9 +19,8 @@ package bulk
 import (
 	"context"
 	"fmt"
-	"sync"
 
-	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+	gpbv1 "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 	"github.com/apache/arrow/go/v17/arrow/flight"
 	"github.com/apache/arrow/go/v17/arrow/ipc"
@@ -49,11 +48,10 @@ type bulkWriter struct {
 	client *BulkClient
 	stream flight.FlightService_DoPutClient
 	writer *flight.Writer
-	mu     sync.Mutex
 }
 
-func (c *BulkClient) NewBulkWriter() (BulkWriter, error) {
-	stream, err := c.client.DoPut(context.Background())
+func (c *BulkClient) NewBulkWriter(ctx context.Context) (BulkWriter, error) {
+	stream, err := c.client.DoPut(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -66,9 +64,6 @@ func (c *BulkClient) NewBulkWriter() (BulkWriter, error) {
 
 // Write converts and sends a table of data to GreptimeDB in Arrow format.
 func (bw *bulkWriter) Write(tb *table.Table) error {
-	bw.mu.Lock()
-	defer bw.mu.Unlock()
-
 	converter := types.NewArrowConverter()
 	tableName, err := tb.GetName()
 	if err != nil {
@@ -97,9 +92,6 @@ func (bw *bulkWriter) Write(tb *table.Table) error {
 // Close finalizes the bulk write operation and cleans up resources.
 // This must be called after all writes are completed.
 func (bw *bulkWriter) Close() error {
-	bw.mu.Lock()
-	defer bw.mu.Unlock()
-
 	if bw.writer != nil {
 		if err := bw.writer.Close(); err != nil {
 			return err
@@ -122,8 +114,8 @@ func (bw *bulkWriter) Close() error {
 }
 
 // BulkWrite performs a single bulk write operation with the given table data.
-func (c *BulkClient) BulkWrite(ctx context.Context, tb *table.Table) (*gpb.GreptimeResponse, error) {
-	bw, err := c.NewBulkWriter()
+func (c *BulkClient) BulkWrite(ctx context.Context, tb *table.Table) (*gpbv1.GreptimeResponse, error) {
+	bw, err := c.NewBulkWriter(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -133,9 +125,9 @@ func (c *BulkClient) BulkWrite(ctx context.Context, tb *table.Table) (*gpb.Grept
 		return nil, err
 	}
 
-	return &gpb.GreptimeResponse{
-		Response: &gpb.GreptimeResponse_AffectedRows{
-			AffectedRows: &gpb.AffectedRows{
+	return &gpbv1.GreptimeResponse{
+		Response: &gpbv1.GreptimeResponse_AffectedRows{
+			AffectedRows: &gpbv1.AffectedRows{
 				Value: uint32(len(tb.GetRows().Rows)),
 			},
 		},

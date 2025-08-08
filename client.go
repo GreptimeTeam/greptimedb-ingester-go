@@ -20,13 +20,14 @@ import (
 	"context"
 
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+	"google.golang.org/grpc"
+
 	"github.com/GreptimeTeam/greptimedb-ingester-go/bulk"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/schema"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
-	"google.golang.org/grpc"
 )
 
 // Client helps to write data into GreptimeDB. A Client is safe for concurrent
@@ -324,7 +325,6 @@ func (c *Client) Close() error {
 // BulkWrite performs a high-efficiency bulk data write operation to GreptimeDB using Apache Arrow format.
 // It sends the entire table data in a single batch, which is more efficient for large datasets compared to row-by-row writes.
 // The table must have columns and rows properly defined before calling this method.
-// Returns the GreptimeDB response containing affected rows count or error if the operation fails.
 func (c *Client) BulkWrite(ctx context.Context, table *table.Table) (*gpb.GreptimeResponse, error) {
 	return c.bulkClient.BulkWrite(ctx, table)
 }
