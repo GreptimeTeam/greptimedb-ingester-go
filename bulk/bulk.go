@@ -29,10 +29,12 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
 
+// BulkClient is a client for performing bulk operations with GreptimeDB.
 type BulkClient struct {
 	client flight.FlightServiceClient
 }
 
+// NewBulkClient creates a new BulkClient instance using the provided gRPC connection.
 func NewBulkClient(conn *grpc.ClientConn) *BulkClient {
 	return &BulkClient{
 		client: flight.NewFlightServiceClient(conn),
@@ -50,6 +52,7 @@ type bulkWriter struct {
 	writer *flight.Writer
 }
 
+// NewBulkWriter creates a new BulkWriter instance for streaming data to GreptimeDB.
 func (c *BulkClient) NewBulkWriter(ctx context.Context) (BulkWriter, error) {
 	stream, err := c.client.DoPut(ctx)
 	if err != nil {

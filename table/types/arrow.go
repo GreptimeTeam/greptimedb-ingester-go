@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+	gpbv1 "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/apache/arrow/go/v17/arrow"
 	"github.com/apache/arrow/go/v17/arrow/array"
 	"github.com/apache/arrow/go/v17/arrow/memory"
@@ -35,7 +35,7 @@ func NewArrowConverter() *ArrowConverter {
 
 // ToArrow converts GreptimeDB Rows to an Arrow Record for efficient bulk transfer.
 // It validates the input schema and data before performing the conversion.
-func (c *ArrowConverter) ToArrow(rows *gpb.Rows) (arrow.Record, error) {
+func (c *ArrowConverter) ToArrow(rows *gpbv1.Rows) (arrow.Record, error) {
 	// Validate input
 	if rows == nil || len(rows.Rows) == 0 {
 		return nil, errors.New("no rows provided")
@@ -102,53 +102,53 @@ func (c *ArrowConverter) ToArrow(rows *gpb.Rows) (arrow.Record, error) {
 }
 
 // convertToArrowType maps GreptimeDB column types to their corresponding Arrow types.
-func (c *ArrowConverter) convertToArrowType(dt gpb.ColumnDataType) (arrow.DataType, error) {
+func (c *ArrowConverter) convertToArrowType(dt gpbv1.ColumnDataType) (arrow.DataType, error) {
 	switch dt {
-	case gpb.ColumnDataType_INT8:
+	case gpbv1.ColumnDataType_INT8:
 		return arrow.PrimitiveTypes.Int8, nil
-	case gpb.ColumnDataType_INT16:
+	case gpbv1.ColumnDataType_INT16:
 		return arrow.PrimitiveTypes.Int16, nil
-	case gpb.ColumnDataType_INT32:
+	case gpbv1.ColumnDataType_INT32:
 		return arrow.PrimitiveTypes.Int32, nil
-	case gpb.ColumnDataType_INT64:
+	case gpbv1.ColumnDataType_INT64:
 		return arrow.PrimitiveTypes.Int64, nil
-	case gpb.ColumnDataType_UINT8:
+	case gpbv1.ColumnDataType_UINT8:
 		return arrow.PrimitiveTypes.Uint8, nil
-	case gpb.ColumnDataType_UINT16:
+	case gpbv1.ColumnDataType_UINT16:
 		return arrow.PrimitiveTypes.Uint16, nil
-	case gpb.ColumnDataType_UINT32:
+	case gpbv1.ColumnDataType_UINT32:
 		return arrow.PrimitiveTypes.Uint32, nil
-	case gpb.ColumnDataType_UINT64:
+	case gpbv1.ColumnDataType_UINT64:
 		return arrow.PrimitiveTypes.Uint64, nil
-	case gpb.ColumnDataType_FLOAT32:
+	case gpbv1.ColumnDataType_FLOAT32:
 		return arrow.PrimitiveTypes.Float32, nil
-	case gpb.ColumnDataType_FLOAT64:
+	case gpbv1.ColumnDataType_FLOAT64:
 		return arrow.PrimitiveTypes.Float64, nil
-	case gpb.ColumnDataType_BOOLEAN:
+	case gpbv1.ColumnDataType_BOOLEAN:
 		return arrow.FixedWidthTypes.Boolean, nil
-	case gpb.ColumnDataType_STRING:
+	case gpbv1.ColumnDataType_STRING:
 		return arrow.BinaryTypes.String, nil
-	case gpb.ColumnDataType_BINARY:
+	case gpbv1.ColumnDataType_BINARY:
 		return arrow.BinaryTypes.Binary, nil
-	case gpb.ColumnDataType_TIMESTAMP_MILLISECOND:
+	case gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND:
 		return arrow.FixedWidthTypes.Timestamp_ms, nil
-	case gpb.ColumnDataType_TIMESTAMP_MICROSECOND:
+	case gpbv1.ColumnDataType_TIMESTAMP_MICROSECOND:
 		return arrow.FixedWidthTypes.Timestamp_us, nil
-	case gpb.ColumnDataType_TIMESTAMP_NANOSECOND:
+	case gpbv1.ColumnDataType_TIMESTAMP_NANOSECOND:
 		return arrow.FixedWidthTypes.Timestamp_ns, nil
-	case gpb.ColumnDataType_TIMESTAMP_SECOND:
+	case gpbv1.ColumnDataType_TIMESTAMP_SECOND:
 		return arrow.FixedWidthTypes.Timestamp_s, nil
-	case gpb.ColumnDataType_DATE:
+	case gpbv1.ColumnDataType_DATE:
 		return arrow.FixedWidthTypes.Date32, nil
-	case gpb.ColumnDataType_DATETIME:
+	case gpbv1.ColumnDataType_DATETIME:
 		return arrow.FixedWidthTypes.Timestamp_ms, nil
-	case gpb.ColumnDataType_TIME_SECOND:
+	case gpbv1.ColumnDataType_TIME_SECOND:
 		return arrow.FixedWidthTypes.Time32s, nil
-	case gpb.ColumnDataType_TIME_MILLISECOND:
+	case gpbv1.ColumnDataType_TIME_MILLISECOND:
 		return arrow.FixedWidthTypes.Time32ms, nil
-	case gpb.ColumnDataType_TIME_MICROSECOND:
+	case gpbv1.ColumnDataType_TIME_MICROSECOND:
 		return arrow.FixedWidthTypes.Time64us, nil
-	case gpb.ColumnDataType_TIME_NANOSECOND:
+	case gpbv1.ColumnDataType_TIME_NANOSECOND:
 		return arrow.FixedWidthTypes.Time64ns, nil
 	default:
 		return nil, errors.New("unsupported data type")
@@ -157,7 +157,7 @@ func (c *ArrowConverter) convertToArrowType(dt gpb.ColumnDataType) (arrow.DataTy
 
 // fillValue populates an Arrow builder with data from a GreptimeDB value.
 // It handles null values and type-specific conversions appropriately.
-func (c *ArrowConverter) fillValue(builder array.Builder, value *gpb.Value, dataType gpb.ColumnDataType) error {
+func (c *ArrowConverter) fillValue(builder array.Builder, value *gpbv1.Value, dataType gpbv1.ColumnDataType) error {
 	if value == nil {
 		builder.AppendNull()
 		return nil
@@ -261,13 +261,13 @@ func (c *ArrowConverter) fillValue(builder array.Builder, value *gpb.Value, data
 		} else {
 			var tsValue int64
 			switch dataType {
-			case gpb.ColumnDataType_TIMESTAMP_SECOND:
+			case gpbv1.ColumnDataType_TIMESTAMP_SECOND:
 				tsValue = value.GetTimestampSecondValue()
-			case gpb.ColumnDataType_TIMESTAMP_MILLISECOND:
+			case gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND:
 				tsValue = value.GetTimestampMillisecondValue()
-			case gpb.ColumnDataType_TIMESTAMP_MICROSECOND:
+			case gpbv1.ColumnDataType_TIMESTAMP_MICROSECOND:
 				tsValue = value.GetTimestampMicrosecondValue()
-			case gpb.ColumnDataType_TIMESTAMP_NANOSECOND:
+			case gpbv1.ColumnDataType_TIMESTAMP_NANOSECOND:
 				tsValue = value.GetTimestampNanosecondValue()
 			default:
 				return errors.New("unsupported timestamp type")
