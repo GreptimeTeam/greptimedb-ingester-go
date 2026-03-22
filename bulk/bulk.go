@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 
 	gpbv1 "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
@@ -105,6 +106,9 @@ func (bw *bulkWriter) Close() error {
 
 	if bw.stream != nil {
 		_, err := bw.stream.Recv()
+		if errors.Is(err, io.EOF) {
+			err = nil
+		}
 		errs = append(errs, err, bw.stream.CloseSend())
 		bw.stream = nil
 	}
@@ -120,8 +124,7 @@ func (c *BulkClient) BulkWrite(ctx context.Context, tb *table.Table) (*gpbv1.Gre
 	}
 
 	if err := bw.Write(tb); err != nil {
-		_ = bw.Close()
-		return nil, err
+		return nil, errors.Join(err, bw.Close())
 	}
 
 	if err := bw.Close(); err != nil {
