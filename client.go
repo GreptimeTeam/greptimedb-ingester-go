@@ -290,11 +290,11 @@ func (c *Client) CloseStream(ctx context.Context) (*gpb.AffectedRows, error) {
 	}
 
 	resp, err := c.stream.CloseAndRecv()
+	c.stream = nil
 	if err != nil {
 		return nil, err
 	}
 
-	c.stream = nil
 	return resp.GetAffectedRows(), nil
 }
 

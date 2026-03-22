@@ -18,6 +18,7 @@ package bulk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	gpbv1 "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
@@ -95,25 +96,20 @@ func (bw *bulkWriter) Write(tb *table.Table) error {
 // Close finalizes the bulk write operation and cleans up resources.
 // This must be called after all writes are completed.
 func (bw *bulkWriter) Close() error {
+	var errs []error
+
 	if bw.writer != nil {
-		if err := bw.writer.Close(); err != nil {
-			return err
-		}
+		errs = append(errs, bw.writer.Close())
 		bw.writer = nil
 	}
 
 	if bw.stream != nil {
-		if _, err := bw.stream.Recv(); err != nil {
-			return err
-		}
-
-		if err := bw.stream.CloseSend(); err != nil {
-			return err
-		}
+		_, err := bw.stream.Recv()
+		errs = append(errs, err, bw.stream.CloseSend())
 		bw.stream = nil
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 // BulkWrite performs a single bulk write operation with the given table data.
@@ -122,9 +118,13 @@ func (c *BulkClient) BulkWrite(ctx context.Context, tb *table.Table) (*gpbv1.Gre
 	if err != nil {
 		return nil, err
 	}
-	defer bw.Close()
 
 	if err := bw.Write(tb); err != nil {
+		_ = bw.Close()
+		return nil, err
+	}
+
+	if err := bw.Close(); err != nil {
 		return nil, err
 	}
 
