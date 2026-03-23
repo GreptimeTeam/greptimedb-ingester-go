@@ -54,7 +54,7 @@ func NewBulkClient(conn *grpc.ClientConn) *BulkClient {
 
 type BulkWriter interface {
 	Write(table *table.Table) error
-	Close() error
+	Close() (uint32, error)
 }
 
 type bulkWriter struct {
@@ -145,7 +145,7 @@ func (bw *bulkWriter) Write(tb *table.Table) error {
 
 // Close finalizes the bulk write operation and cleans up resources.
 // This must be called after all writes are completed.
-func (bw *bulkWriter) Close() error {
+func (bw *bulkWriter) Close() (uint32, error) {
 	var errs []error
 
 	if bw.writer != nil {
@@ -164,7 +164,7 @@ func (bw *bulkWriter) Close() error {
 		bw.stream = nil
 	}
 
-	return errors.Join(errs...)
+	return bw.rows, errors.Join(errs...)
 }
 
 // BulkWrite performs a single bulk write operation with the given table data.
@@ -175,18 +175,19 @@ func (c *BulkClient) BulkWrite(ctx context.Context, tb *table.Table) (*gpbv1.Gre
 	}
 
 	if err := bw.Write(tb); err != nil {
-		return nil, errors.Join(err, bw.Close())
+		_, closeErr := bw.Close()
+		return nil, errors.Join(err, closeErr)
 	}
 
-	if err := bw.Close(); err != nil {
+	rows, err := bw.Close()
+	if err != nil {
 		return nil, err
 	}
 
-	writer := bw.(*bulkWriter)
 	return &gpbv1.GreptimeResponse{
 		Response: &gpbv1.GreptimeResponse_AffectedRows{
 			AffectedRows: &gpbv1.AffectedRows{
-				Value: writer.rows,
+				Value: rows,
 			},
 		},
 	}, nil
