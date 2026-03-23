@@ -27,6 +27,7 @@ import (
 	"github.com/apache/arrow/go/v17/arrow/flight"
 	"github.com/apache/arrow/go/v17/arrow/ipc"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
@@ -52,6 +53,10 @@ type bulkWriter struct {
 	client *BulkClient
 	stream flight.FlightService_DoPutClient
 	writer *flight.Writer
+
+	recvDone chan struct{}   // closed when the recv goroutine exits
+	recvErr  error          // first non-EOF error from recv goroutine
+	rows     uint32         // total affected rows reported by server
 }
 
 // NewBulkWriter creates a new BulkWriter instance for streaming data to GreptimeDB.
@@ -61,10 +66,34 @@ func (c *BulkClient) NewBulkWriter(ctx context.Context) (BulkWriter, error) {
 		return nil, err
 	}
 
-	return &bulkWriter{
-		client: c,
-		stream: stream,
-	}, nil
+	bw := &bulkWriter{
+		client:   c,
+		stream:   stream,
+		recvDone: make(chan struct{}),
+	}
+	go bw.recvLoop()
+	return bw, nil
+}
+
+// recvLoop drains all PutResult messages from the server in the background,
+// accumulating affected rows and capturing the first error.
+func (bw *bulkWriter) recvLoop() {
+	defer close(bw.recvDone)
+	for {
+		resp, err := bw.stream.Recv()
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				bw.recvErr = err
+			}
+			return
+		}
+		if resp != nil && len(resp.AppMetadata) > 0 {
+			var meta gpbv1.FlightMetadata
+			if unmarshalErr := proto.Unmarshal(resp.AppMetadata, &meta); unmarshalErr == nil {
+				bw.rows += meta.GetAffectedRows().GetValue()
+			}
+		}
+	}
 }
 
 // Write converts and sends a table of data to GreptimeDB in Arrow format.
@@ -105,11 +134,13 @@ func (bw *bulkWriter) Close() error {
 	}
 
 	if bw.stream != nil {
-		_, err := bw.stream.Recv()
-		if errors.Is(err, io.EOF) {
-			err = nil
+		errs = append(errs, bw.stream.CloseSend())
+		// Wait for recvLoop to drain all server responses (including the
+		// final result sent after the background write task completes).
+		<-bw.recvDone
+		if bw.recvErr != nil {
+			errs = append(errs, bw.recvErr)
 		}
-		errs = append(errs, err, bw.stream.CloseSend())
 		bw.stream = nil
 	}
 
@@ -131,10 +162,11 @@ func (c *BulkClient) BulkWrite(ctx context.Context, tb *table.Table) (*gpbv1.Gre
 		return nil, err
 	}
 
+	writer := bw.(*bulkWriter)
 	return &gpbv1.GreptimeResponse{
 		Response: &gpbv1.GreptimeResponse_AffectedRows{
 			AffectedRows: &gpbv1.AffectedRows{
-				Value: uint32(len(tb.GetRows().Rows)),
+				Value: writer.rows,
 			},
 		},
 	}, nil
