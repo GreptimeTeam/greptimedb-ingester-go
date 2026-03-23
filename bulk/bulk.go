@@ -69,6 +69,7 @@ type bulkWriter struct {
 }
 
 // NewBulkWriter creates a new BulkWriter instance for streaming data to GreptimeDB.
+// Callers must call Close when done to release resources and stop the background goroutine.
 func (c *BulkClient) NewBulkWriter(ctx context.Context) (BulkWriter, error) {
 	stream, err := c.client.DoPut(ctx)
 	if err != nil {
@@ -100,7 +101,13 @@ func (bw *bulkWriter) recvLoop() {
 		}
 		if resp != nil && len(resp.AppMetadata) > 0 {
 			var putResp doPutResponse
-			if unmarshalErr := json.Unmarshal(resp.AppMetadata, &putResp); unmarshalErr == nil {
+			if unmarshalErr := json.Unmarshal(resp.AppMetadata, &putResp); unmarshalErr != nil {
+				bw.mu.Lock()
+				if bw.recvErr == nil {
+					bw.recvErr = fmt.Errorf("failed to unmarshal PutResult.AppMetadata: %w", unmarshalErr)
+				}
+				bw.mu.Unlock()
+			} else {
 				bw.mu.Lock()
 				bw.rows += putResp.AffectedRows
 				bw.mu.Unlock()
