@@ -18,6 +18,7 @@ package bulk
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -28,10 +29,16 @@ import (
 	"github.com/apache/arrow/go/v17/arrow/flight"
 	"github.com/apache/arrow/go/v17/arrow/ipc"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 )
+
+// doPutResponse mirrors the server-side DoPutResponse (JSON-encoded in PutResult.AppMetadata).
+type doPutResponse struct {
+	RequestID    int64   `json:"request_id"`
+	AffectedRows uint32  `json:"affected_rows"`
+	ElapsedSecs  float64 `json:"elapsed_secs"`
+}
 
 // BulkClient is a client for performing bulk operations with GreptimeDB.
 type BulkClient struct {
@@ -92,10 +99,10 @@ func (bw *bulkWriter) recvLoop() {
 			return
 		}
 		if resp != nil && len(resp.AppMetadata) > 0 {
-			var meta gpbv1.FlightMetadata
-			if unmarshalErr := proto.Unmarshal(resp.AppMetadata, &meta); unmarshalErr == nil {
+			var putResp doPutResponse
+			if unmarshalErr := json.Unmarshal(resp.AppMetadata, &putResp); unmarshalErr == nil {
 				bw.mu.Lock()
-				bw.rows += meta.GetAffectedRows().GetValue()
+				bw.rows += putResp.AffectedRows
 				bw.mu.Unlock()
 			}
 		}
