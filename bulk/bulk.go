@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	gpbv1 "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
@@ -54,9 +55,10 @@ type bulkWriter struct {
 	stream flight.FlightService_DoPutClient
 	writer *flight.Writer
 
-	recvDone chan struct{}   // closed when the recv goroutine exits
-	recvErr  error          // first non-EOF error from recv goroutine
-	rows     uint32         // total affected rows reported by server
+	recvDone chan struct{} // closed when the recv goroutine exits
+	mu       sync.RWMutex
+	recvErr  error  // first non-EOF error from recv goroutine
+	rows     uint32 // total affected rows reported by server
 }
 
 // NewBulkWriter creates a new BulkWriter instance for streaming data to GreptimeDB.
@@ -83,14 +85,18 @@ func (bw *bulkWriter) recvLoop() {
 		resp, err := bw.stream.Recv()
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
+				bw.mu.Lock()
 				bw.recvErr = err
+				bw.mu.Unlock()
 			}
 			return
 		}
 		if resp != nil && len(resp.AppMetadata) > 0 {
 			var meta gpbv1.FlightMetadata
 			if unmarshalErr := proto.Unmarshal(resp.AppMetadata, &meta); unmarshalErr == nil {
+				bw.mu.Lock()
 				bw.rows += meta.GetAffectedRows().GetValue()
+				bw.mu.Unlock()
 			}
 		}
 	}
@@ -98,6 +104,13 @@ func (bw *bulkWriter) recvLoop() {
 
 // Write converts and sends a table of data to GreptimeDB in Arrow format.
 func (bw *bulkWriter) Write(tb *table.Table) error {
+	bw.mu.RLock()
+	err := bw.recvErr
+	bw.mu.RUnlock()
+	if err != nil {
+		return fmt.Errorf("stream already failed: %w", err)
+	}
+
 	converter := types.NewArrowConverter()
 	tableName, err := tb.GetName()
 	if err != nil {
