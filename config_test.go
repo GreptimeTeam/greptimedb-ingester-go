@@ -45,6 +45,19 @@ func TestNewConfigSingleHostRespectsWithPort(t *testing.T) {
 	assert.Equal(t, []string{"h:14001"}, cfg.resolveEndpoints())
 }
 
+func TestNewConfigSingleArgIPv6BareHost(t *testing.T) {
+	cfg := NewConfig("[::1]")
+	assert.Equal(t, "[::1]", cfg.Host,
+		"bracketed IPv6 without a port must stay in the legacy bare-host form")
+	assert.Equal(t, []string{"[::1]:4001"}, cfg.resolveEndpoints())
+}
+
+func TestNewConfigSingleArgIPv6HostPortShorthand(t *testing.T) {
+	cfg := NewConfig("[::1]:4001")
+	assert.Equal(t, "", cfg.Host, "host:port arg must not populate Host")
+	assert.Equal(t, []string{"[::1]:4001"}, cfg.resolveEndpoints())
+}
+
 func TestNewConfigSingleArgHostPortShorthand(t *testing.T) {
 	cfg := NewConfig("h1:5001")
 	assert.Equal(t, "", cfg.Host, "host:port arg must not populate Host")

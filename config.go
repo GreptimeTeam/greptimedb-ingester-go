@@ -18,7 +18,7 @@ package greptime
 
 import (
 	"fmt"
-	"strings"
+	"net"
 	"time"
 
 	"go.opentelemetry.io/otel/metric"
@@ -81,10 +81,11 @@ func NewConfig(hosts ...string) *Config {
 	case 0:
 		// nothing to do; caller will set endpoints via WithEndpoints.
 	case 1:
-		// An argument containing ':' is treated as a "host:port" endpoint
-		// rather than a bare host; this avoids silently producing
-		// "host:port:4001" through Host+Port concatenation.
-		if strings.Contains(hosts[0], ":") {
+		// If the argument parses as "host:port", treat it as an explicit
+		// endpoint; otherwise keep the legacy bare-host semantics so that
+		// NewConfig("127.0.0.1") and NewConfig("[::1]") both still work
+		// with WithPort.
+		if _, _, err := net.SplitHostPort(hosts[0]); err == nil {
 			cfg.WithEndpoints(hosts[0])
 		} else {
 			cfg.Host = hosts[0]

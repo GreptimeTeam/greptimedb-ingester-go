@@ -24,7 +24,9 @@ import (
 )
 
 // Picker selects one endpoint from the given slice per call.
-// Implementations must be safe for concurrent use.
+// Implementations must be safe for concurrent use. Callers must pass a
+// non-empty slice; behavior on an empty slice is undefined and the
+// built-in pickers will panic.
 type Picker interface {
 	Pick(endpoints []string) string
 }
