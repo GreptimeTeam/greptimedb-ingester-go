@@ -1,4 +1,4 @@
-Copyright {{attrs.git_file_created_year if attrs.git_file_created_year else attrs.disk_file_created_year }} {{props["copyrightOwner"]}}
+Copyright {{attrs.git_file_created_year}} {{props["copyrightOwner"]}}
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

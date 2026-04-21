@@ -20,4 +20,6 @@ jobs:
         fetch-depth: 0
 
     - name: Check License Header
-      uses: korandoru/hawkeye@v6
+      shell: bash
+      run: |
+        make check-license

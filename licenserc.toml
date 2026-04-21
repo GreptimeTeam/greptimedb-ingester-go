@@ -13,6 +13,10 @@ includes = [
     'Makefile'
 ]
 
+excludes = [
+    '**/.git/**'
+]
+
 [properties]
 copyrightOwner = "Greptime Team"
 
