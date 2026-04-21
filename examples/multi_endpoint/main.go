@@ -14,27 +14,12 @@
  * limitations under the License.
  */
 
-// Package main demonstrates writing to multiple GreptimeDB endpoints with
-// client-side load balancing.
-//
-// Usage:
-//
-//	GREPTIMEDB_ENDPOINTS=host1:4001,host2:4001 go run ./examples/multi_endpoint -lb=rr
-//
-// The -lb flag selects the load-balancing strategy: "random" (default) or
-// "rr" (round-robin). The example reports the observed dispatch counts per
-// endpoint by wrapping the Picker.
+// Writes to several GreptimeDB endpoints with client-side load balancing.
 package main
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	"log"
-	"os"
-	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
@@ -43,88 +28,23 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
-const (
-	database  = "public"
-	tableName = "multi_endpoint_demo"
-)
-
-// countingPicker wraps a Picker and tallies how many times each endpoint
-// gets selected, so the example can print a visible distribution at the end.
-type countingPicker struct {
-	inner  loadbalancer.Picker
-	mu     sync.Mutex
-	counts map[string]*atomic.Uint64
-}
-
-func newCountingPicker(inner loadbalancer.Picker) *countingPicker {
-	return &countingPicker{inner: inner, counts: map[string]*atomic.Uint64{}}
-}
-
-func (p *countingPicker) Pick(endpoints []string) string {
-	addr := p.inner.Pick(endpoints)
-	p.mu.Lock()
-	c, ok := p.counts[addr]
-	if !ok {
-		c = &atomic.Uint64{}
-		p.counts[addr] = c
-	}
-	p.mu.Unlock()
-	c.Add(1)
-	return addr
-}
-
-func (p *countingPicker) Report() string {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	parts := make([]string, 0, len(p.counts))
-	for addr, c := range p.counts {
-		parts = append(parts, fmt.Sprintf("%s=%d", addr, c.Load()))
-	}
-	return strings.Join(parts, " ")
-}
-
-func pickerFromFlag(name string) loadbalancer.Picker {
-	switch name {
-	case "rr", "round-robin", "roundrobin":
-		return loadbalancer.NewRoundRobin()
-	case "random", "":
-		return loadbalancer.NewRandom()
-	default:
-		log.Fatalf("unknown -lb value %q (want random|rr)", name)
-		return nil
-	}
-}
+const database = "public"
 
 func main() {
-	lbName := flag.String("lb", "random", "load-balancer: random | rr")
-	n := flag.Int("n", 20, "number of rows to write")
-	flag.Parse()
-
-	raw := os.Getenv("GREPTIMEDB_ENDPOINTS")
-	if raw == "" {
-		log.Fatal("set GREPTIMEDB_ENDPOINTS=host1:4001,host2:4001,...")
-	}
-	endpoints := strings.Split(raw, ",")
-	for i := range endpoints {
-		endpoints[i] = strings.TrimSpace(endpoints[i])
-	}
-
-	picker := newCountingPicker(pickerFromFlag(*lbName))
-
 	cfg := greptime.NewConfig().
 		WithDatabase(database).
-		WithEndpoints(endpoints...).
-		WithLoadBalancer(picker)
+		WithEndpoints("127.0.0.1:4001", "127.0.0.2:4001", "127.0.0.3:4001").
+		WithLoadBalancer(loadbalancer.NewRoundRobin()) // default is NewRandom()
 
 	client, err := greptime.NewClient(cfg)
 	if err != nil {
-		log.Fatalf("new client: %v", err)
+		log.Fatal(err)
 	}
-	defer func() { _ = client.Close() }()
+	defer client.Close()
 
-	tbl, err := table.New(tableName)
+	tbl, err := table.New("multi_endpoint_demo")
 	if err != nil {
-		log.Fatalf("new table: %v", err)
+		log.Fatal(err)
 	}
 	if err := tbl.AddTagColumn("host", types.STRING); err != nil {
 		log.Fatal(err)
@@ -139,16 +59,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	for i := 0; i < *n; i++ {
-		resp, err := client.Write(ctx, tbl)
-		if err != nil {
-			log.Fatalf("write %d: %v", i, err)
-		}
-		_ = resp
+	// Each Write picks one endpoint through the configured load balancer.
+	resp, err := client.Write(context.Background(), tbl)
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	log.Printf("lb=%s total=%d dispatch: %s", *lbName, *n, picker.Report())
+	log.Printf("affected rows: %d", resp.GetAffectedRows().GetValue())
 }
