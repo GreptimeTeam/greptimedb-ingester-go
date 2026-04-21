@@ -14,19 +14,19 @@ permissions:
 
 jobs:
   labeler:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - uses: actions/labeler@v5
+      - uses: actions/labeler@v6
         with:
           configuration-path: ".github/labeler.yaml"
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
 
   size-label:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: pascalgn/size-label-action@v0.5.5
+      - uses: pascalgn/size-label-action@v0.5.7
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

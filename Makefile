@@ -13,20 +13,29 @@
 # limitations under the License.
 
 ## Tool Versions
-KAWKEYE_VERSION ?= v6.0.0
+KAWKEYE_VERSION ?= v6.5.1
+GOLANGCI_LINT_VERSION ?= v2.1.6
 
 .PHONY: hawkeye
 hawkeye: ## Install hawkeye.
 	curl --proto '=https' --tlsv1.2 -LsSf https://github.com/korandoru/hawkeye/releases/download/${KAWKEYE_VERSION}/hawkeye-installer.sh | sh
 
 .PHONY: check-license
-check-license: ## Check License Header.
+check-license: hawkeye ## Check License Header.
 	hawkeye check --config licenserc.toml
 
 .PHONY: format-license
-format-license: ## Format License Header.
-	hawkeye format --config licenserc.toml
+format-license: hawkeye ## Format License Header.
+	hawkeye format --config licenserc.toml --fail-if-updated false
 
 .PHONY: remove-license
 remove-license: ## Remove License Header.
 	hawkeye remove --config licenserc.toml
+
+.PHONY: lint
+lint: golangci-lint ## Run lint.
+	golangci-lint run -v ./...
+
+.PHONY: golangci-lint
+golangci-lint: ## Install golangci-lint.
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}

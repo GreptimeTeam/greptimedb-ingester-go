@@ -32,8 +32,8 @@ type TlsOption struct {
 	// ClientKeyPath, ClientCertPath string // mTLS
 }
 
-func NewTlsOption(InsecureSkipVerify bool) TlsOption {
-	return TlsOption{InsecureSkipVerify: InsecureSkipVerify}
+func NewTlsOption(insecureSkipVerify bool) TlsOption {
+	return TlsOption{InsecureSkipVerify: insecureSkipVerify}
 }
 
 func (opt TlsOption) Build() grpc.DialOption {

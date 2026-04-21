@@ -1,6 +1,5 @@
 # manually check and fix the license declaration
 #
-# make hawkeye
 # make check-license
 # make format-license
 
@@ -13,9 +12,14 @@ includes = [
     'Makefile'
 ]
 
-[properties]
-copyrightOwner = "Greptime Team"
+excludes = [
+    '**/.git/**',
+    'examples/**'
+]
 
 [git]
 attrs = 'enable'
 ignore = 'auto'
+
+[properties]
+copyrightOwner = "Greptime Team"
