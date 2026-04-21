@@ -19,12 +19,13 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: List file
-      shell: bash
-      run: |
-        cat /home/runner/work/greptimedb-ingester-go/greptimedb-ingester-go/examples/bulkwrite/main.go
-
     - name: Check License Header
       shell: bash
       run: |
+        make format-license
         make check-license
+
+    - name: Diff file
+      shell: bash
+      run: |
+        git diff    
