@@ -16,9 +16,9 @@ excludes = [
     '**/.git/**'
 ]
 
-[properties]
-copyrightOwner = "Greptime Team"
-
 [git]
 attrs = 'enable'
 ignore = 'auto'
+
+[properties]
+copyrightOwner = "Greptime Team"
