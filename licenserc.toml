@@ -1,6 +1,5 @@
 # manually check and fix the license declaration
 #
-# make hawkeye
 # make check-license
 # make format-license
 
