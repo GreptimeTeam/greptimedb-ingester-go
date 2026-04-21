@@ -29,8 +29,9 @@ import (
 
 // DATETIME is a deprecated alias for TIMESTAMP_MICROSECOND (greptimedb PR #5506).
 // Bulk (Arrow) and unary paths must agree on microsecond precision; previously
-// bulk mapped DATETIME to Timestamp_ms and had no fillValue case, so any bulk
-// write of a DATETIME column silently failed.
+// bulk mapped DATETIME to Timestamp_ms and had no fillValue case for the
+// microsecond timestamp value, so bulk writes of a DATETIME column failed with
+// a propagated conversion error.
 func TestConvertToArrowType_DatetimeIsMicrosecond(t *testing.T) {
 	c := NewArrowConverter()
 
