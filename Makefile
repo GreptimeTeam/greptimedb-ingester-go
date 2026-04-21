@@ -14,6 +14,7 @@
 
 ## Tool Versions
 KAWKEYE_VERSION ?= v6.5.1
+GOLANGCI_LINT_VERSION ?= v2.1.6
 
 .PHONY: hawkeye
 hawkeye: ## Install hawkeye.
@@ -30,3 +31,11 @@ format-license: ## Format License Header.
 .PHONY: remove-license
 remove-license: ## Remove License Header.
 	hawkeye remove --config licenserc.toml
+
+.PHONY: lint
+lint: golangci-lint ## Run lint.
+	golangci-lint run -v ./...
+
+.PHONY: golangci-lint
+golangci-lint: ## Install golangci-lint.
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
