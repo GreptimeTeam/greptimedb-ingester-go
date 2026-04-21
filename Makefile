@@ -21,7 +21,7 @@ hawkeye: ## Install hawkeye.
 	curl --proto '=https' --tlsv1.2 -LsSf https://github.com/korandoru/hawkeye/releases/download/${KAWKEYE_VERSION}/hawkeye-installer.sh | sh
 
 .PHONY: check-license
-check-license: ## Check License Header.
+check-license: hawkeye ## Check License Header.
 	hawkeye check --config licenserc.toml
 
 .PHONY: format-license
