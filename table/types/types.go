@@ -59,20 +59,22 @@ type ColumnType int
 //
 // ColumnType has richer types than ColumnDataType in protocol buffer
 const (
-	BOOLEAN               ColumnType = 0
-	INT8                  ColumnType = 1
-	INT16                 ColumnType = 2
-	INT32                 ColumnType = 3
-	INT64                 ColumnType = 4
-	UINT8                 ColumnType = 5
-	UINT16                ColumnType = 6
-	UINT32                ColumnType = 7
-	UINT64                ColumnType = 8
-	FLOAT32               ColumnType = 9
-	FLOAT64               ColumnType = 10
-	BINARY                ColumnType = 11
-	STRING                ColumnType = 12
-	DATE                  ColumnType = 13
+	BOOLEAN ColumnType = 0
+	INT8    ColumnType = 1
+	INT16   ColumnType = 2
+	INT32   ColumnType = 3
+	INT64   ColumnType = 4
+	UINT8   ColumnType = 5
+	UINT16  ColumnType = 6
+	UINT32  ColumnType = 7
+	UINT64  ColumnType = 8
+	FLOAT32 ColumnType = 9
+	FLOAT64 ColumnType = 10
+	BINARY  ColumnType = 11
+	STRING  ColumnType = 12
+	DATE    ColumnType = 13
+	// Deprecated: DATETIME is an alias for TIMESTAMP_MICROSECOND. Use TIMESTAMP_MICROSECOND (or one of the other TIMESTAMP_* variants) instead.
+	// See https://github.com/GreptimeTeam/greptimedb/pull/5506.
 	DATETIME              ColumnType = 14
 	TIMESTAMP_SECOND      ColumnType = 15
 	TIMESTAMP_MILLISECOND ColumnType = 16

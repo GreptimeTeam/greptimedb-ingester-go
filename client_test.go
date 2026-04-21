@@ -741,14 +741,14 @@ func TestInsertAllDataTypes(t *testing.T) {
 	assert.Nil(t, table.AddFieldColumn("string", types.STRING))
 
 	assert.Nil(t, table.AddFieldColumn("date", types.DATE))
-	assert.Nil(t, table.AddFieldColumn("datetime", types.DATETIME))
+	assert.Nil(t, table.AddFieldColumn("datetime", types.DATETIME)) //nolint:staticcheck // intentional: verify deprecated DATETIME alias still maps to TIMESTAMP_MICROSECOND
 	assert.Nil(t, table.AddFieldColumn("timestamp_second", types.TIMESTAMP_SECOND))
 	assert.Nil(t, table.AddFieldColumn("timestamp_millisecond", types.TIMESTAMP_MILLISECOND))
 	assert.Nil(t, table.AddFieldColumn("timestamp_microsecond", types.TIMESTAMP_MICROSECOND))
 	assert.Nil(t, table.AddFieldColumn("timestamp_nanosecond", types.TIMESTAMP_NANOSECOND))
 
 	assert.Nil(t, table.AddFieldColumn("date_int", types.DATE))
-	assert.Nil(t, table.AddFieldColumn("datetime_int", types.DATETIME))
+	assert.Nil(t, table.AddFieldColumn("datetime_int", types.DATETIME)) //nolint:staticcheck // intentional: verify deprecated DATETIME alias still maps to TIMESTAMP_MICROSECOND
 	assert.Nil(t, table.AddFieldColumn("timestamp_second_int", types.TIMESTAMP_SECOND))
 	assert.Nil(t, table.AddFieldColumn("timestamp_millisecond_int", types.TIMESTAMP_MILLISECOND))
 	assert.Nil(t, table.AddFieldColumn("timestamp_microsecond_int", types.TIMESTAMP_MICROSECOND))
