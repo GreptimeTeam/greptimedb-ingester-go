@@ -37,7 +37,7 @@ func TestConvertToArrowType_DatetimeIsMicrosecond(t *testing.T) {
 
 	dtType, err := c.convertToArrowType(gpbv1.ColumnDataType_DATETIME)
 	require.NoError(t, err)
-	assert.Equal(t, arrow.FixedWidthTypes.Timestamp_us, dtType)
+	assert.Equal(t, timestampTypeUs, dtType)
 
 	tsType, err := c.convertToArrowType(gpbv1.ColumnDataType_TIMESTAMP_MICROSECOND)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestToArrow_DatetimeColumn(t *testing.T) {
 	require.Equal(t, int64(1), record.NumCols())
 
 	field := record.Schema().Field(0)
-	assert.Equal(t, arrow.FixedWidthTypes.Timestamp_us, field.Type)
+	assert.Equal(t, timestampTypeUs, field.Type)
 
 	col, ok := record.Column(0).(*array.Timestamp)
 	require.True(t, ok, "column must be *array.Timestamp")

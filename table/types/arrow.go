@@ -26,6 +26,17 @@ import (
 	"github.com/apache/arrow/go/v17/arrow/memory"
 )
 
+// Timezone-less timestamp types. arrow-go's FixedWidthTypes.Timestamp_* default
+// to TimeZone="UTC", but GreptimeDB's server-side schema expects Timestamp(unit)
+// without a timezone for bulk (Arrow Flight) writes, and rejects the record
+// batch with "expected Timestamp(ms) but found Timestamp(ms, \"UTC\")".
+var (
+	timestampTypeS  = &arrow.TimestampType{Unit: arrow.Second}
+	timestampTypeMs = &arrow.TimestampType{Unit: arrow.Millisecond}
+	timestampTypeUs = &arrow.TimestampType{Unit: arrow.Microsecond}
+	timestampTypeNs = &arrow.TimestampType{Unit: arrow.Nanosecond}
+)
+
 // ArrowConverter handles conversion between GreptimeDB and Arrow formats
 type ArrowConverter struct{}
 
@@ -131,14 +142,14 @@ func (c *ArrowConverter) convertToArrowType(dt gpbv1.ColumnDataType) (arrow.Data
 	case gpbv1.ColumnDataType_BINARY:
 		return arrow.BinaryTypes.Binary, nil
 	case gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND:
-		return arrow.FixedWidthTypes.Timestamp_ms, nil
+		return timestampTypeMs, nil
 	case gpbv1.ColumnDataType_TIMESTAMP_MICROSECOND, gpbv1.ColumnDataType_DATETIME:
 		// DATETIME is a deprecated alias for TIMESTAMP_MICROSECOND (greptimedb PR #5506).
-		return arrow.FixedWidthTypes.Timestamp_us, nil
+		return timestampTypeUs, nil
 	case gpbv1.ColumnDataType_TIMESTAMP_NANOSECOND:
-		return arrow.FixedWidthTypes.Timestamp_ns, nil
+		return timestampTypeNs, nil
 	case gpbv1.ColumnDataType_TIMESTAMP_SECOND:
-		return arrow.FixedWidthTypes.Timestamp_s, nil
+		return timestampTypeS, nil
 	case gpbv1.ColumnDataType_DATE:
 		return arrow.FixedWidthTypes.Date32, nil
 	case gpbv1.ColumnDataType_TIME_SECOND:
