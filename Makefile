@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ## Tool Versions
-KAWKEYE_VERSION ?= v6.0.0
+KAWKEYE_VERSION ?= v6.5.1
 
 .PHONY: hawkeye
 hawkeye: ## Install hawkeye.

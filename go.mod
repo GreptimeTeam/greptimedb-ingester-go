@@ -1,6 +1,6 @@
 module github.com/GreptimeTeam/greptimedb-ingester-go
 
-go 1.24.0
+go 1.26.0
 
 require (
 	github.com/GreptimeTeam/greptime-proto v0.15.0
