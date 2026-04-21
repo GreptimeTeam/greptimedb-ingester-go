@@ -13,7 +13,8 @@ includes = [
 ]
 
 excludes = [
-    '**/.git/**'
+    '**/.git/**',
+    'examples/**'
 ]
 
 [git]

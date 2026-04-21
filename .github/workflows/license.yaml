@@ -22,10 +22,4 @@ jobs:
     - name: Check License Header
       shell: bash
       run: |
-        make format-license
         make check-license
-
-    - name: Diff file
-      shell: bash
-      run: |
-        git diff    
