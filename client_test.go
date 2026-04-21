@@ -36,7 +36,7 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
 
-//TODO(yuanbohan):
+// TODO(yuanbohan):
 // unmatched length of columns in rows and columns in schema
 // support pointer
 // timeout test
