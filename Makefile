@@ -25,7 +25,7 @@ check-license: hawkeye ## Check License Header.
 	hawkeye check --config licenserc.toml
 
 .PHONY: format-license
-format-license: ## Format License Header.
+format-license: hawkeye ## Format License Header.
 	hawkeye format --config licenserc.toml
 
 .PHONY: remove-license
