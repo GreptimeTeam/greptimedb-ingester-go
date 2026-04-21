@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 
@@ -45,6 +46,12 @@ import (
 type Client struct {
 	cfg  *Config
 	pool *pool.Pool
+
+	// closed guards Close against repeated invocations. The pool pointer
+	// itself is intentionally left stable after Close so that any RPC still
+	// in flight — or a post-close misuse — surfaces as a gRPC transport
+	// error rather than a nil-pointer dereference.
+	closed atomic.Bool
 
 	streamMu sync.Mutex
 	stream   gpb.GreptimeDatabase_HandleRequestsClient
@@ -339,19 +346,18 @@ func (c *Client) HealthCheck(ctx context.Context) (*gpb.HealthCheckResponse, err
 // Close terminates all underlying gRPC connections. Any active stream is
 // aborted by the connection teardown; callers that need a graceful
 // half-close must call CloseStream first. Call this method when the
-// client is no longer needed.
+// client is no longer needed. Close is idempotent; RPCs issued after
+// Close fail with a gRPC transport error rather than panicking.
 func (c *Client) Close() error {
+	if !c.closed.CompareAndSwap(false, true) {
+		return nil
+	}
+
 	c.streamMu.Lock()
 	c.stream = nil
 	c.streamMu.Unlock()
 
-	if c.pool != nil {
-		if err := c.pool.Close(); err != nil {
-			return err
-		}
-		c.pool = nil
-	}
-	return nil
+	return c.pool.Close()
 }
 
 // BulkWrite performs a high-efficiency bulk data write operation to GreptimeDB using Apache Arrow format.
