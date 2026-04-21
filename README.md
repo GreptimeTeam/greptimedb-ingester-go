@@ -45,6 +45,28 @@ cfg.WithInsecure(false) // default insecure=true
 cfg.WithKeepalive(time.Second*30, time.Second*5) // keepalive isn't enabled by default
 ```
 
+##### Multiple endpoints
+
+Configure several GreptimeDB endpoints to spread writes across an HA cluster.
+Unary calls (`Write`, `Delete`, `HealthCheck`, `BulkWrite`) pick an endpoint
+per call through the configured picker. A streaming session started by
+`StreamWrite` / `StreamDelete` binds to one endpoint until `CloseStream`; if
+that endpoint fails mid-stream the Send returns the error and the next
+`StreamWrite` picks a fresh endpoint. Auth, TLS, keepalive and telemetry are
+shared across all endpoints.
+
+```go
+import "github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
+
+cfg := greptime.NewConfig().
+    WithDatabase("<database>").
+    WithEndpoints("host1:4001", "host2:4001", "host3:4001").
+    WithLoadBalancer(loadbalancer.NewRoundRobin()) // default is NewRandom()
+```
+
+See [`examples/multi_endpoint`](examples/multi_endpoint/main.go) for a runnable
+demo that reports per-endpoint dispatch counts.
+
 ### Client
 
 ```go

@@ -20,6 +20,7 @@ docker run --rm -p 4000-4003:4000-4003 \
 - [hints](hints/README.md)
 - [jsondata](jsondata/README.md)
 - [bulkwrite](bulkwrite/README.md)
+- [multi_endpoint](multi_endpoint/main.go) — write against multiple GreptimeDB endpoints with client-side load balancing
 
 ## Query
 

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+//go:build integration
+
 package greptime
 
 import (
@@ -32,6 +34,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
+	"github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
 	tbl "github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
@@ -1290,4 +1293,55 @@ func TestBulkWriteMonitors(t *testing.T) {
 	for i, monitor_ := range monitors_ {
 		assert.Equal(t, monitors[i], monitor_)
 	}
+}
+
+// TestMultiEndpointWrite exercises the multi-endpoint dispatch path against
+// the real GreptimeDB container. It configures the same address twice so
+// every Pick resolves to the live server, and switches the picker to
+// round-robin so the test is deterministic without needing a second
+// container. This verifies the pool + picker wiring does not regress the
+// single-container insert path.
+func TestMultiEndpointWrite(t *testing.T) {
+	addr := fmt.Sprintf("%s:%d", host, grpcPort)
+	cfg := NewConfig().
+		WithDatabase(database).
+		WithKeepalive(30*time.Second, 5*time.Second).
+		WithEndpoints(addr, addr).
+		WithLoadBalancer(loadbalancer.NewRoundRobin())
+
+	multi, err := NewClient(cfg)
+	assert.Nil(t, err)
+	defer multi.Close()
+
+	ts := time.Now()
+	monitors := []monitor{
+		{ID: randomId(), Host: "127.0.0.1", Memory: 1, Cpu: 1.0, Temperature: -1, Ts: ts, Running: true},
+		{ID: randomId(), Host: "127.0.0.2", Memory: 2, Cpu: 2.0, Temperature: -2, Ts: ts, Running: true},
+	}
+
+	table, err := tbl.New(monitorTableName)
+	assert.Nil(t, err)
+	assert.Nil(t, table.AddTagColumn("id", types.INT64))
+	assert.Nil(t, table.AddTagColumn("host", types.STRING))
+	assert.Nil(t, table.AddFieldColumn("memory", types.UINT64))
+	assert.Nil(t, table.AddFieldColumn("cpu", types.FLOAT64))
+	assert.Nil(t, table.AddFieldColumn("temperature", types.INT64))
+	assert.Nil(t, table.AddFieldColumn("running", types.BOOLEAN))
+	assert.Nil(t, table.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND))
+
+	for _, m := range monitors {
+		assert.Nil(t, table.AddRow(m.ID, m.Host, m.Memory, m.Cpu, m.Temperature, m.Running, m.Ts))
+	}
+
+	// Fire multiple writes so round-robin rotates through both (duplicate)
+	// endpoints at least once each.
+	for i := 0; i < 4; i++ {
+		resp, err := multi.Write(context.Background(), table)
+		assert.Nil(t, err)
+		assert.Zero(t, resp.GetHeader().GetStatus().GetStatusCode())
+	}
+
+	hcResp, err := multi.HealthCheck(context.Background())
+	assert.Nil(t, err)
+	assert.NotNil(t, hcResp)
 }

@@ -18,6 +18,7 @@ package greptime
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel/metric"
@@ -25,6 +26,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/options"
 )
 
@@ -43,16 +45,31 @@ type Config struct {
 	Password string
 	Database string // the default database
 
+	// endpoints, when non-empty, overrides Host:Port. Each entry is a
+	// "host:port" string. Populated via WithEndpoints.
+	endpoints []string
+
+	// picker selects an endpoint per RPC when more than one is configured.
+	// Defaults to loadbalancer.NewRandom() at client construction time.
+	picker loadbalancer.Picker
+
 	tls     *options.TlsOption
 	options []grpc.DialOption
 
 	telemetry *options.TelemetryOptions
 }
 
-// NewConfig helps to init Config with host only
-func NewConfig(host string) *Config {
-	return &Config{
-		Host: host,
+// NewConfig initializes a Config.
+//
+//   - NewConfig() — no endpoint yet; caller must call WithEndpoints.
+//   - NewConfig("host") — single-endpoint legacy form; port defaults to
+//     4001 and can be changed with WithPort.
+//   - NewConfig("host:port") — single-endpoint shorthand equivalent to
+//     NewConfig().WithEndpoints("host:port"). WithPort has no effect.
+//   - NewConfig("host1:4001", "host2:4001", ...) — equivalent to
+//     NewConfig().WithEndpoints(args...). WithPort has no effect.
+func NewConfig(hosts ...string) *Config {
+	cfg := &Config{
 		Port: 4001,
 
 		telemetry: options.NewTelemetryOptions(),
@@ -60,6 +77,22 @@ func NewConfig(host string) *Config {
 			options.NewUserAgentOption(version).Build(),
 		},
 	}
+	switch len(hosts) {
+	case 0:
+		// nothing to do; caller will set endpoints via WithEndpoints.
+	case 1:
+		// An argument containing ':' is treated as a "host:port" endpoint
+		// rather than a bare host; this avoids silently producing
+		// "host:port:4001" through Host+Port concatenation.
+		if strings.Contains(hosts[0], ":") {
+			cfg.WithEndpoints(hosts[0])
+		} else {
+			cfg.Host = hosts[0]
+		}
+	default:
+		cfg.WithEndpoints(hosts...)
+	}
+	return cfg
 }
 
 // WithPort set the Port field. Do not change it if you have no idea what it is.
@@ -138,8 +171,40 @@ func (c *Config) WithDialOption(opt grpc.DialOption) *Config {
 	return c
 }
 
-func (c *Config) endpoint() string {
-	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+// WithEndpoints configures multiple GreptimeDB endpoints for client-side
+// load balancing. Each endpoint must be a "host:port" string. When at
+// least one endpoint is provided, Host and Port are ignored. Passing no
+// arguments is a no-op and the client falls back to Host:Port.
+//
+// Authentication, TLS, keepalive, telemetry and any dial options are
+// shared across all endpoints; per-endpoint overrides are not supported.
+func (c *Config) WithEndpoints(endpoints ...string) *Config {
+	if len(endpoints) > 0 {
+		c.endpoints = append([]string(nil), endpoints...)
+	}
+	return c
+}
+
+// WithLoadBalancer sets the load-balancing strategy used when more than one
+// endpoint is configured. Defaults to loadbalancer.NewRandom() when unset.
+// Has no observable effect when only a single endpoint is in use.
+func (c *Config) WithLoadBalancer(picker loadbalancer.Picker) *Config {
+	c.picker = picker
+	return c
+}
+
+// resolveEndpoints returns the configured endpoints, falling back to
+// [Host:Port] when WithEndpoints was not called. Returns an empty slice
+// when neither a Host nor endpoints were set, which NewClient reports as a
+// configuration error.
+func (c *Config) resolveEndpoints() []string {
+	if len(c.endpoints) > 0 {
+		return c.endpoints
+	}
+	if c.Host == "" {
+		return nil
+	}
+	return []string{fmt.Sprintf("%s:%d", c.Host, c.Port)}
 }
 
 func (c *Config) build() []grpc.DialOption {

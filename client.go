@@ -18,11 +18,14 @@ package greptime
 
 import (
 	"context"
+	"fmt"
+	"net"
+	"sync"
 
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
-	"google.golang.org/grpc"
 
-	"github.com/GreptimeTeam/greptimedb-ingester-go/bulk"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/internal/pool"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request/header"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/schema"
@@ -31,47 +34,58 @@ import (
 )
 
 // Client helps to write data into GreptimeDB. A Client is safe for concurrent
-// use by multiple goroutines,you can have one Client instance in your application.
+// use by multiple goroutines; one instance per application is typical.
+//
+// When configured with multiple endpoints via Config.WithEndpoints, unary
+// calls (Write, Delete, HealthCheck, BulkWrite) pick an endpoint per call
+// through the configured loadbalancer.Picker. A streaming session opened by
+// StreamWrite/StreamDelete binds to a single endpoint until CloseStream;
+// if that endpoint fails mid-stream, the Send returns the underlying error
+// and the next StreamWrite call picks a fresh endpoint to open a new stream.
 type Client struct {
-	cfg               *Config
-	conn              *grpc.ClientConn
-	client            gpb.GreptimeDatabaseClient
-	stream            gpb.GreptimeDatabase_HandleRequestsClient
-	healthCheckClient gpb.HealthCheckClient
-	bulkClient        *bulk.BulkClient
+	cfg  *Config
+	pool *pool.Pool
+
+	streamMu sync.Mutex
+	stream   gpb.GreptimeDatabase_HandleRequestsClient
 }
 
-// NewClient helps to create the greptimedb client, which will be responsible write data into GreptimeDB.
+// NewClient creates the greptimedb client responsible for writing data into
+// GreptimeDB. Endpoints configured via WithEndpoints take precedence over
+// Host:Port; each entry must be a "host:port" string.
 func NewClient(cfg *Config) (*Client, error) {
-	conn, err := grpc.NewClient(cfg.endpoint(), cfg.build()...)
+	addrs := cfg.resolveEndpoints()
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("greptime: no endpoint configured; pass a host to NewConfig or call WithEndpoints")
+	}
+	for _, addr := range addrs {
+		if _, _, err := net.SplitHostPort(addr); err != nil {
+			return nil, fmt.Errorf("greptime: invalid endpoint %q: %w", addr, err)
+		}
+	}
+
+	picker := cfg.picker
+	if picker == nil {
+		picker = loadbalancer.NewRandom()
+	}
+
+	p, err := pool.New(addrs, picker, cfg.build())
 	if err != nil {
 		return nil, err
 	}
 
-	client := gpb.NewGreptimeDatabaseClient(conn)
-	healthCheckClient := gpb.NewHealthCheckClient(conn)
-	bulkClient := bulk.NewBulkClient(conn)
-
-	return &Client{
-		cfg:               cfg,
-		client:            client,
-		conn:              conn,
-		healthCheckClient: healthCheckClient,
-		bulkClient:        bulkClient,
-	}, nil
+	return &Client{cfg: cfg, pool: p}, nil
 }
 
-// submit is to build request and send it to GreptimeDB.
-// The operations can be set:
-//   - INSERT
-//   - DELETE
+// submit builds a request and dispatches it to a picked endpoint. picking
+// fresh per call keeps the path retry-friendly once a retry layer lands.
 func (c *Client) submit(ctx context.Context, operation types.Operation, tables ...*table.Table) (*gpb.GreptimeResponse, error) {
 	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
 	request_, err := request.New(header_, operation, tables...).Build()
 	if err != nil {
 		return nil, err
 	}
-	return c.client.Handle(ctx, request_)
+	return c.pool.Pick().DB.Handle(ctx, request_)
 }
 
 // Write is to write the data into GreptimeDB via explicit schema.
@@ -168,17 +182,25 @@ func (c *Client) DeleteObject(ctx context.Context, obj any) (*gpb.GreptimeRespon
 	return c.submit(ctx, types.DELETE, tbl)
 }
 
-// streamSubmit is to build stream request and send it to GreptimeDB.
-// The operations can be set:
-//   - INSERT
-//   - DELETE
+// streamSubmit lazily opens a bidirectional stream against a picked endpoint
+// and sends the request on it. The stream is cached until CloseStream or
+// until a Send error is surfaced; on error we clear the cache so that the
+// next call re-picks and rebuilds (matches the TypeScript ingester and
+// avoids silent failover that could gap or duplicate rows).
+//
+// The mutex serializes stream construction (gRPC Send is not itself safe for
+// concurrent calls) and also fixes a pre-existing TOCTOU race on the cached
+// stream.
 func (c *Client) streamSubmit(ctx context.Context, operation types.Operation, tables ...*table.Table) error {
+	c.streamMu.Lock()
+	defer c.streamMu.Unlock()
+
 	if c.stream == nil {
-		stream, err := c.client.HandleRequests(ctx)
+		s, err := c.pool.Pick().DB.HandleRequests(ctx)
 		if err != nil {
 			return err
 		}
-		c.stream = stream
+		c.stream = s
 	}
 
 	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
@@ -186,7 +208,12 @@ func (c *Client) streamSubmit(ctx context.Context, operation types.Operation, ta
 	if err != nil {
 		return err
 	}
-	return c.stream.Send(request_)
+	if err := c.stream.Send(request_); err != nil {
+		// Clear the broken stream so the next call rebuilds on a fresh pick.
+		c.stream = nil
+		return err
+	}
+	return nil
 }
 
 // StreamWrite is to send the data into GreptimeDB via explicit schema.
@@ -284,7 +311,10 @@ func (c *Client) StreamDeleteObject(ctx context.Context, body any) error {
 // CloseStream closes the stream. Once we’ve finished writing our client’s requests to the stream
 // using client.StreamWrite or client.StreamWriteObject, we need to call client.CloseStream to let
 // GreptimeDB know that we’ve finished writing and are expecting to receive a response.
-func (c *Client) CloseStream(ctx context.Context) (*gpb.AffectedRows, error) {
+func (c *Client) CloseStream(_ context.Context) (*gpb.AffectedRows, error) {
+	c.streamMu.Lock()
+	defer c.streamMu.Unlock()
+
 	if c.stream == nil {
 		return &gpb.AffectedRows{}, nil
 	}
@@ -298,27 +328,29 @@ func (c *Client) CloseStream(ctx context.Context) (*gpb.AffectedRows, error) {
 	return resp.GetAffectedRows(), nil
 }
 
-// HealthCheck will check GreptimeDB health status.
+// HealthCheck will check GreptimeDB health status. With multiple endpoints
+// configured, HealthCheck probes whichever endpoint the picker returns for
+// this call, not every endpoint.
 func (c *Client) HealthCheck(ctx context.Context) (*gpb.HealthCheckResponse, error) {
 	req := &gpb.HealthCheckRequest{}
-	resp, err := c.healthCheckClient.HealthCheck(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
+	return c.pool.Pick().Health.HealthCheck(ctx, req)
 }
 
-// Close terminates the gRPC connection.
-// Call this method when the client is no longer needed.
+// Close terminates all underlying gRPC connections. Any active stream is
+// aborted by the connection teardown; callers that need a graceful
+// half-close must call CloseStream first. Call this method when the
+// client is no longer needed.
 func (c *Client) Close() error {
-	if c.conn != nil {
-		if err := c.conn.Close(); err != nil {
+	c.streamMu.Lock()
+	c.stream = nil
+	c.streamMu.Unlock()
+
+	if c.pool != nil {
+		if err := c.pool.Close(); err != nil {
 			return err
 		}
-		c.conn = nil
+		c.pool = nil
 	}
-
 	return nil
 }
 
@@ -326,5 +358,5 @@ func (c *Client) Close() error {
 // It sends the entire table data in a single batch, which is more efficient for large datasets compared to row-by-row writes.
 // The table must have columns and rows properly defined before calling this method.
 func (c *Client) BulkWrite(ctx context.Context, table *table.Table) (*gpb.GreptimeResponse, error) {
-	return c.bulkClient.BulkWrite(ctx, table)
+	return c.pool.Pick().Bulk.BulkWrite(ctx, table)
 }
