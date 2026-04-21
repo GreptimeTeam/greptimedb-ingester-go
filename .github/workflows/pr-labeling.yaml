@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   labeler:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
@@ -25,7 +25,7 @@ jobs:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
 
   size-label:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: pascalgn/size-label-action@v0.5.7
         env:
