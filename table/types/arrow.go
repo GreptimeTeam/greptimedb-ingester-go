@@ -132,7 +132,8 @@ func (c *ArrowConverter) convertToArrowType(dt gpbv1.ColumnDataType) (arrow.Data
 		return arrow.BinaryTypes.Binary, nil
 	case gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND:
 		return arrow.FixedWidthTypes.Timestamp_ms, nil
-	case gpbv1.ColumnDataType_TIMESTAMP_MICROSECOND:
+	case gpbv1.ColumnDataType_TIMESTAMP_MICROSECOND, gpbv1.ColumnDataType_DATETIME:
+		// DATETIME is a deprecated alias for TIMESTAMP_MICROSECOND (greptimedb PR #5506).
 		return arrow.FixedWidthTypes.Timestamp_us, nil
 	case gpbv1.ColumnDataType_TIMESTAMP_NANOSECOND:
 		return arrow.FixedWidthTypes.Timestamp_ns, nil
@@ -140,8 +141,6 @@ func (c *ArrowConverter) convertToArrowType(dt gpbv1.ColumnDataType) (arrow.Data
 		return arrow.FixedWidthTypes.Timestamp_s, nil
 	case gpbv1.ColumnDataType_DATE:
 		return arrow.FixedWidthTypes.Date32, nil
-	case gpbv1.ColumnDataType_DATETIME:
-		return arrow.FixedWidthTypes.Timestamp_ms, nil
 	case gpbv1.ColumnDataType_TIME_SECOND:
 		return arrow.FixedWidthTypes.Time32s, nil
 	case gpbv1.ColumnDataType_TIME_MILLISECOND:
@@ -265,7 +264,7 @@ func (c *ArrowConverter) fillValue(builder array.Builder, value *gpbv1.Value, da
 				tsValue = value.GetTimestampSecondValue()
 			case gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND:
 				tsValue = value.GetTimestampMillisecondValue()
-			case gpbv1.ColumnDataType_TIMESTAMP_MICROSECOND:
+			case gpbv1.ColumnDataType_TIMESTAMP_MICROSECOND, gpbv1.ColumnDataType_DATETIME:
 				tsValue = value.GetTimestampMicrosecondValue()
 			case gpbv1.ColumnDataType_TIMESTAMP_NANOSECOND:
 				tsValue = value.GetTimestampNanosecondValue()
