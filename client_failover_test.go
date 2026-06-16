@@ -19,6 +19,7 @@ package greptime
 import (
 	"context"
 	"net"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
@@ -43,10 +45,19 @@ type fakeDBServer struct {
 	server    *grpc.Server
 	calls     atomic.Uint64
 	available atomic.Bool
+	// bizCode, when nonzero, makes Handle return a business error carrying this
+	// GreptimeDB status code in the x-greptime-err-code trailer.
+	bizCode atomic.Uint32
 }
 
-func (s *fakeDBServer) Handle(_ context.Context, _ *gpb.GreptimeRequest) (*gpb.GreptimeResponse, error) {
+func (s *fakeDBServer) Handle(ctx context.Context, _ *gpb.GreptimeRequest) (*gpb.GreptimeResponse, error) {
 	s.calls.Add(1)
+	// Simulate a GreptimeDB business error: a gRPC status plus the precise
+	// status code in the x-greptime-err-code trailer, exactly as the server does.
+	if code := s.bizCode.Load(); code != 0 {
+		_ = grpc.SetTrailer(ctx, metadata.Pairs("x-greptime-err-code", strconv.FormatUint(uint64(code), 10)))
+		return nil, status.Error(codes.ResourceExhausted, "business error")
+	}
 	if !s.available.Load() {
 		return nil, status.Error(codes.Unavailable, "endpoint down")
 	}
@@ -158,4 +169,68 @@ func TestClientWriteEjectsAndRecoversEndpoint(t *testing.T) {
 		got[detector.Select([]string{down.addr, up.addr}, nil)] = struct{}{}
 	}
 	assert.Contains(t, got, down.addr, "recovered endpoint should re-enter rotation")
+}
+
+// A non-retryable business error (RateLimited maps to ResourceExhausted but is
+// not retryable) must fail fast without burning retries, and must not eject the
+// endpoint — it answered correctly.
+func TestClientWriteDoesNotRetryNonRetryableServerError(t *testing.T) {
+	s := startFakeDB(t, true)
+	s.bizCode.Store(6001) // RateLimited
+
+	detector := loadbalancer.NewOutlierDetector(loadbalancer.OutlierDetectorOptions{ConsecutiveFailures: 1})
+	cfg := NewConfig().
+		WithDatabase("public").
+		WithEndpoints(s.addr).
+		WithLoadBalancer(detector).
+		WithRetry(RetryPolicy{MaxAttempts: 3, InitialBackoff: time.Millisecond, MaxBackoff: 2 * time.Millisecond, BackoffMultiplier: 2})
+	client, err := NewClient(cfg)
+	require.NoError(t, err)
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err = client.Write(ctx, failoverTestTable(t))
+	require.Error(t, err)
+	assert.Equal(t, codes.ResourceExhausted, status.Code(err), "underlying gRPC status preserved")
+	assert.Equal(t, uint64(1), s.calls.Load(), "non-retryable server error must not retry")
+	// The endpoint answered, so it stays healthy and selectable.
+	assert.Equal(t, s.addr, detector.Select([]string{s.addr}, nil))
+}
+
+// A retryable business error (RegionBusy) is retried on another endpoint, and
+// the busy endpoint is not ejected (it is alive, just transiently busy).
+func TestClientWriteRetriesRetryableServerError(t *testing.T) {
+	busy := startFakeDB(t, true)
+	busy.bizCode.Store(4009) // RegionBusy → retryable
+	up := startFakeDB(t, true)
+
+	detector := loadbalancer.NewOutlierDetector(loadbalancer.OutlierDetectorOptions{
+		Base:                loadbalancer.NewRoundRobin(),
+		ConsecutiveFailures: 1,
+	})
+	cfg := NewConfig().
+		WithDatabase("public").
+		WithEndpoints(busy.addr, up.addr).
+		WithLoadBalancer(detector).
+		WithRetry(RetryPolicy{MaxAttempts: 3, InitialBackoff: time.Millisecond, MaxBackoff: 2 * time.Millisecond, BackoffMultiplier: 2})
+	client, err := NewClient(cfg)
+	require.NoError(t, err)
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	for i := 0; i < 6; i++ {
+		resp, err := client.Write(ctx, failoverTestTable(t))
+		require.NoError(t, err, "write %d should retry past the RegionBusy endpoint", i)
+		assert.Equal(t, uint32(1), resp.GetAffectedRows().GetValue())
+	}
+	// Busy endpoint must remain selectable — a business error never ejects it.
+	picks := map[string]struct{}{}
+	for i := 0; i < 50; i++ {
+		picks[detector.Select([]string{busy.addr, up.addr}, nil)] = struct{}{}
+	}
+	assert.Contains(t, picks, busy.addr, "RegionBusy endpoint must not be ejected")
 }

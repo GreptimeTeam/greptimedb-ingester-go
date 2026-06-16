@@ -21,9 +21,11 @@ import (
 	"errors"
 	"math"
 	"math/rand/v2"
+	"strconv"
 	"time"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
@@ -58,8 +60,75 @@ var DefaultRetryPolicy = RetryPolicy{
 	Jitter:            true,
 }
 
-// isRetryable reports whether err is a transient transport failure worth
-// retrying on another endpoint.
+// greptimeErrCodeTrailer is the gRPC trailer key under which GreptimeDB returns
+// its business StatusCode on an errored response (mirrors the server-side
+// common_error::GREPTIME_DB_HEADER_ERROR_CODE).
+const greptimeErrCodeTrailer = "x-greptime-err-code"
+
+// retryableServerStatus is the set of GreptimeDB business status codes that are
+// transient and worth retrying. Mirrors StatusCode::is_retryable in GreptimeDB,
+// minus Internal (1003): a generic internal error is too often a real bug to
+// retry blindly. Same set the TypeScript ingester uses.
+//
+// These are needed because the server's status_code -> gRPC code mapping is
+// lossy: RegionBusy and RateLimited both surface as ResourceExhausted, but only
+// RegionBusy is retryable. Classifying on the precise status code restores the
+// distinction.
+var retryableServerStatus = map[uint32]struct{}{
+	4008: {}, // RegionNotReady
+	4009: {}, // RegionBusy
+	4010: {}, // TableUnavailable
+	5000: {}, // StorageUnavailable
+	6000: {}, // RuntimeResourcesExhausted
+}
+
+// serverStatusError pairs a gRPC status error from GreptimeDB with the business
+// StatusCode carried in the x-greptime-err-code trailer. It is unexported and
+// transparent: it preserves the underlying gRPC status (GRPCStatus) and error
+// chain (Unwrap), so callers still see the original error — it only steers
+// retry/health classification internally.
+type serverStatusError struct {
+	statusCode uint32
+	err        error
+}
+
+func (e *serverStatusError) Error() string              { return e.err.Error() }
+func (e *serverStatusError) Unwrap() error              { return e.err }
+func (e *serverStatusError) GRPCStatus() *status.Status { return status.Convert(e.err) }
+
+// withServerStatus annotates err with the GreptimeDB business status code from
+// the response trailer when present. A nil error or a trailer without the code
+// is returned unchanged.
+func withServerStatus(err error, trailer metadata.MD) error {
+	if err == nil {
+		return nil
+	}
+	vals := trailer.Get(greptimeErrCodeTrailer)
+	if len(vals) == 0 {
+		return err
+	}
+	code, parseErr := strconv.ParseUint(vals[0], 10, 32)
+	if parseErr != nil {
+		return err
+	}
+	return &serverStatusError{statusCode: uint32(code), err: err}
+}
+
+// serverStatusCode returns the GreptimeDB business status code carried by err,
+// if err is a server status error.
+func serverStatusCode(err error) (uint32, bool) {
+	var se *serverStatusError
+	if errors.As(err, &se) {
+		return se.statusCode, true
+	}
+	return 0, false
+}
+
+// isRetryable reports whether err is worth retrying on another endpoint.
+//
+// A GreptimeDB business error is authoritative: only its transient status codes
+// retry, regardless of how they collapse onto gRPC codes. Otherwise we fall
+// back to the transport-level gRPC codes.
 //
 // DeadlineExceeded is deliberately NOT retryable: this client forwards the
 // caller's context straight to each RPC (there is no per-attempt deadline), so
@@ -72,6 +141,10 @@ func isRetryable(err error) bool {
 	if isCancellation(err) {
 		return false
 	}
+	if code, ok := serverStatusCode(err); ok {
+		_, retry := retryableServerStatus[code]
+		return retry
+	}
 	switch status.Code(err) {
 	case codes.Unknown, codes.ResourceExhausted, codes.Aborted, codes.Unavailable:
 		return true
@@ -82,13 +155,17 @@ func isRetryable(err error) bool {
 
 // isEndpointFailure reports whether err indicates the endpoint itself is
 // unhealthy (connectivity or capacity) and should be temporarily avoided by a
-// health-aware selector. A server business error — even a retryable one — means
-// the endpoint is alive and routing correctly and must NOT eject it.
+// health-aware selector.
 //
+// A server business error — even a retryable one like RegionBusy — means the
+// endpoint answered and is routing correctly, so it must NOT eject the endpoint
+// (that would punish a healthy frontend for a datanode-side condition).
 // DeadlineExceeded is excluded for the same reason as in isRetryable: it
-// reflects the caller's clock, not the endpoint's health, so a tight caller
-// deadline must never eject an otherwise-healthy endpoint.
+// reflects the caller's clock, not the endpoint's health.
 func isEndpointFailure(err error) bool {
+	if _, ok := serverStatusCode(err); ok {
+		return false
+	}
 	switch status.Code(err) {
 	case codes.ResourceExhausted, codes.Unavailable:
 		return true

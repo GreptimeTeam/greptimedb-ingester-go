@@ -70,14 +70,23 @@ For an HA deployment, the client can fail over to another endpoint when one
 becomes unreachable, instead of surfacing every transient transport error to
 the caller.
 
-**Retry across endpoints.** Unary calls retry on retryable transport failures
-(`Unavailable`, `ResourceExhausted`, `Aborted`, `Unknown`), re-picking a
-*different* endpoint each attempt — a single dead endpoint cannot burn the whole
-retry budget. Server business errors (e.g. `InvalidArgument`, `TableNotFound`)
-are never retried. Neither is `DeadlineExceeded` or context cancellation: the
-client forwards the caller's context to each attempt, so an elapsed deadline
-means the caller ran out of time — retrying would reuse the same expired
-context, and a healthy endpoint is not penalized for it. The policy is
+**Retry across endpoints.** Unary calls retry on retryable failures, re-picking
+a *different* endpoint each attempt — a single dead endpoint cannot burn the
+whole retry budget. Retryable means:
+
+- transport failures: `Unavailable`, `ResourceExhausted`, `Aborted`, `Unknown`;
+- transient GreptimeDB server errors, classified by the precise status code
+  carried in the `x-greptime-err-code` trailer: `RegionNotReady`, `RegionBusy`,
+  `TableUnavailable`, `StorageUnavailable`, `RuntimeResourcesExhausted`.
+
+The precise status code matters because the server collapses several codes onto
+one gRPC code (e.g. `RegionBusy` and `RateLimited` both surface as
+`ResourceExhausted`, but only `RegionBusy` is worth retrying). Other server
+errors (`InvalidArguments`, `TableNotFound`, auth failures, `Internal`) are
+never retried, and a server error never ejects the endpoint from a health-aware
+selector — it answered, so it is alive. Neither `DeadlineExceeded` nor context
+cancellation is retried: the client forwards the caller's context to each
+attempt, so an elapsed deadline means the caller ran out of time. The policy is
 configurable; the default is three attempts with exponential backoff and full
 jitter:
 

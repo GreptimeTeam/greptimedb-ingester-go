@@ -24,6 +24,8 @@ import (
 	"sync/atomic"
 
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/internal/pool"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
@@ -124,7 +126,11 @@ func (c *Client) submit(ctx context.Context, operation types.Operation, tables .
 	}
 	return runWithFailover(ctx, c.pool.Addrs(), c.selector, c.health, c.retry,
 		func(peer string) (*gpb.GreptimeResponse, error) {
-			return c.pool.Get(peer).DB.Handle(ctx, request_)
+			// Capture the response trailer so a GreptimeDB business error can be
+			// classified by its precise status code, not just the lossy gRPC code.
+			var trailer metadata.MD
+			resp, err := c.pool.Get(peer).DB.Handle(ctx, request_, grpc.Trailer(&trailer))
+			return resp, withServerStatus(err, trailer)
 		})
 }
 

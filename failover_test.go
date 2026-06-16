@@ -19,14 +19,24 @@ package greptime
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+// serverErr builds the kind of error the unary path produces for a GreptimeDB
+// business failure: a gRPC status error annotated with the precise status code
+// from the x-greptime-err-code trailer.
+func serverErr(grpcCode codes.Code, statusCode uint32) error {
+	md := metadata.Pairs(greptimeErrCodeTrailer, strconv.FormatUint(uint64(statusCode), 10))
+	return withServerStatus(status.Error(grpcCode, "server"), md)
+}
 
 // recordingSelector records every Select call and its exclude snapshot, plus
 // the health-hook calls. It returns the first non-excluded endpoint (falling
@@ -234,6 +244,51 @@ func TestIsEndpointFailure(t *testing.T) {
 	assert.False(t, isEndpointFailure(status.Error(codes.InvalidArgument, "")))
 	assert.False(t, isEndpointFailure(nil))
 	assert.False(t, isEndpointFailure(context.Canceled))
+}
+
+// GreptimeDB collapses several business status codes onto the same gRPC code
+// (RegionBusy and RateLimited both become ResourceExhausted; RegionNotReady and
+// TableNotFound differ only by status code under Unavailable/NotFound). The
+// precise status code from the trailer must drive the retry decision.
+func TestServerStatusErrorRetryClassification(t *testing.T) {
+	// Retryable transient business errors.
+	assert.True(t, isRetryable(serverErr(codes.ResourceExhausted, 4009)), "RegionBusy")
+	assert.True(t, isRetryable(serverErr(codes.Unavailable, 4008)), "RegionNotReady")
+	assert.True(t, isRetryable(serverErr(codes.Unavailable, 4010)), "TableUnavailable")
+	assert.True(t, isRetryable(serverErr(codes.Unavailable, 5000)), "StorageUnavailable")
+	assert.True(t, isRetryable(serverErr(codes.ResourceExhausted, 6000)), "RuntimeResourcesExhausted")
+
+	// Same gRPC code, non-retryable status code: must NOT retry despite mapping
+	// to ResourceExhausted/Unavailable.
+	assert.False(t, isRetryable(serverErr(codes.ResourceExhausted, 6001)), "RateLimited")
+	assert.False(t, isRetryable(serverErr(codes.Internal, 1003)), "Internal (a real bug, not retried)")
+	assert.False(t, isRetryable(serverErr(codes.NotFound, 4001)), "TableNotFound")
+	assert.False(t, isRetryable(serverErr(codes.InvalidArgument, 1004)), "InvalidArguments")
+}
+
+func TestServerStatusErrorNeverEjectsEndpoint(t *testing.T) {
+	// A business error — even a retryable one — proves the endpoint is alive.
+	assert.False(t, isEndpointFailure(serverErr(codes.ResourceExhausted, 4009)), "RegionBusy")
+	assert.False(t, isEndpointFailure(serverErr(codes.Unavailable, 4008)), "RegionNotReady")
+	assert.False(t, isEndpointFailure(serverErr(codes.Internal, 1003)))
+
+	// A bare transport failure (no trailer) still ejects.
+	assert.True(t, isEndpointFailure(status.Error(codes.Unavailable, "")))
+	assert.True(t, isEndpointFailure(status.Error(codes.ResourceExhausted, "")))
+}
+
+func TestWithServerStatusTransparent(t *testing.T) {
+	// nil and trailer-less errors pass through unchanged.
+	assert.Nil(t, withServerStatus(nil, metadata.MD{}))
+	plain := status.Error(codes.Unavailable, "down")
+	assert.Equal(t, plain, withServerStatus(plain, metadata.MD{}))
+
+	// The wrapper preserves gRPC status code and the error chain.
+	wrapped := serverErr(codes.ResourceExhausted, 4009)
+	assert.Equal(t, codes.ResourceExhausted, status.Code(wrapped), "GRPCStatus preserved")
+	code, ok := serverStatusCode(wrapped)
+	assert.True(t, ok)
+	assert.Equal(t, uint32(4009), code)
 }
 
 // A caller deadline/cancel that fires while the RPC is in flight must stop
