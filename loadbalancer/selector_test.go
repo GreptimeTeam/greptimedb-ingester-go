@@ -191,6 +191,23 @@ func TestOutlierDetectorExcludeStillHonored(t *testing.T) {
 	assert.Equal(t, "b", got)
 }
 
+func TestOutlierDetectorWidensWhenHealthyCandidatesExcluded(t *testing.T) {
+	clk := &fixedClock{now: time.Unix(0, 0)}
+	od := newTestDetector(clk, OutlierDetectorOptions{
+		Base:                NewRoundRobin(),
+		ConsecutiveFailures: 1,
+		BaseEjection:        time.Hour,
+	})
+	eps := []string{"a", "b"}
+
+	od.ReportFailure("b")
+	assert.NotContains(t, candidatesOver(od, eps, 20), "b")
+
+	got := od.Select(eps, map[string]struct{}{"a": {}})
+	assert.Equal(t, "b", got,
+		"when all healthy peers are excluded by the retry sequence, try an ejected peer before reusing the failed one")
+}
+
 func TestNewOutlierDetectorDefaults(t *testing.T) {
 	od := NewOutlierDetector(OutlierDetectorOptions{})
 	assert.Equal(t, 5, od.threshold)

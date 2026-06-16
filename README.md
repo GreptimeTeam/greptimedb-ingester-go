@@ -62,7 +62,7 @@ cfg := greptime.NewConfig().
 ```
 
 See [`examples/multi_endpoint`](examples/multi_endpoint/main.go) for a runnable
-demo that reports per-endpoint dispatch counts.
+configuration example with health-aware failover.
 
 ##### Failover
 

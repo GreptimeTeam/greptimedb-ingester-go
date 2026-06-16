@@ -48,6 +48,14 @@ type HealthReporter interface {
 // applyExclude drops excluded peers, falling open to the full list when that
 // would leave nothing to choose from.
 func applyExclude(endpoints []string, exclude map[string]struct{}) []string {
+	kept := excludeEndpoints(endpoints, exclude)
+	if len(kept) == 0 {
+		return endpoints
+	}
+	return kept
+}
+
+func excludeEndpoints(endpoints []string, exclude map[string]struct{}) []string {
 	if len(exclude) == 0 {
 		return endpoints
 	}
@@ -56,9 +64,6 @@ func applyExclude(endpoints []string, exclude map[string]struct{}) []string {
 		if _, skip := exclude[ep]; !skip {
 			kept = append(kept, ep)
 		}
-	}
-	if len(kept) == 0 {
-		return endpoints
 	}
 	return kept
 }
@@ -179,8 +184,16 @@ func (o *OutlierDetector) Select(endpoints []string, exclude map[string]struct{}
 	candidates := healthy
 	if len(candidates) == 0 {
 		candidates = endpoints
+	} else if filtered := excludeEndpoints(candidates, exclude); len(filtered) > 0 {
+		candidates = filtered
+	} else {
+		// Every healthy endpoint has already failed in this retry sequence.
+		// Widen to the full endpoint set, still honoring the per-call exclude
+		// set when possible, so an ejected peer gets a chance before we retry
+		// the same failed healthy endpoint.
+		candidates = applyExclude(endpoints, exclude)
 	}
-	return o.base.Pick(applyExclude(candidates, exclude))
+	return o.base.Pick(candidates)
 }
 
 // ReportSuccess clears any failure streak for endpoint and re-admits it.
