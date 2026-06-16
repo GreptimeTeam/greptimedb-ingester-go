@@ -58,44 +58,35 @@ var DefaultRetryPolicy = RetryPolicy{
 	Jitter:            true,
 }
 
-// retryableCodes are transport-level gRPC status codes worth retrying on
-// another endpoint. Mirrors the TypeScript ingester's conservative set.
-var retryableCodes = map[codes.Code]struct{}{
-	codes.Unknown:           {},
-	codes.DeadlineExceeded:  {},
-	codes.ResourceExhausted: {},
-	codes.Aborted:           {},
-	codes.Unavailable:       {},
-}
-
-// endpointFailureCodes indicate the endpoint itself is unhealthy (connectivity
-// or capacity), so a health-aware selector should temporarily avoid it. A
-// server business error — even a retryable one — means the endpoint is alive
-// and routing correctly and must NOT eject it.
-var endpointFailureCodes = map[codes.Code]struct{}{
-	codes.DeadlineExceeded:  {},
-	codes.ResourceExhausted: {},
-	codes.Unavailable:       {},
-}
-
 // isRetryable reports whether err is a transient transport failure worth
-// retrying on another endpoint. Caller-initiated cancellation never retries.
+// retrying on another endpoint. The retryable set mirrors the TypeScript
+// ingester's conservative codes. Caller-initiated cancellation never retries.
 func isRetryable(err error) bool {
 	if err == nil || isCancellation(err) {
 		return false
 	}
-	_, ok := retryableCodes[status.Code(err)]
-	return ok
+	switch status.Code(err) {
+	case codes.Unknown, codes.DeadlineExceeded, codes.ResourceExhausted, codes.Aborted, codes.Unavailable:
+		return true
+	default:
+		return false
+	}
 }
 
 // isEndpointFailure reports whether err indicates the endpoint itself is
-// unhealthy and should be temporarily avoided by a health-aware selector.
+// unhealthy (connectivity or capacity) and should be temporarily avoided by a
+// health-aware selector. A server business error — even a retryable one — means
+// the endpoint is alive and routing correctly and must NOT eject it.
 func isEndpointFailure(err error) bool {
 	if err == nil || isCancellation(err) {
 		return false
 	}
-	_, ok := endpointFailureCodes[status.Code(err)]
-	return ok
+	switch status.Code(err) {
+	case codes.DeadlineExceeded, codes.ResourceExhausted, codes.Unavailable:
+		return true
+	default:
+		return false
+	}
 }
 
 // isCancellation reports whether err is a caller-initiated cancellation, which

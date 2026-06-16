@@ -21,14 +21,16 @@ import (
 	"time"
 )
 
-// Selector is an optional richer interface a Picker may implement. When the
-// configured Picker also satisfies Selector, the client passes the set of peers
-// already tried and failed in the current retry sequence via exclude so the
-// selector can steer away from them. Exclusion is best-effort: a selector must
-// fall open to the full set rather than fail when every endpoint is excluded,
-// because a retry against the least-bad peer beats no retry at all.
+// Selector picks one endpoint per call, honoring an exclude set so a retry loop
+// can steer away from peers already tried and failed in the current sequence.
+// Exclusion is best-effort: a selector must fall open to the full set rather
+// than fail when every endpoint is excluded, because a retry against the
+// least-bad peer beats no retry at all.
+//
+// A Picker that also implements Selector is used directly by the client;
+// otherwise AsSelector wraps it. NewOutlierDetector implements both Picker (so
+// it can be passed to Config.WithLoadBalancer) and Selector.
 type Selector interface {
-	Picker
 	Select(endpoints []string, exclude map[string]struct{}) string
 }
 
@@ -212,9 +214,14 @@ func (o *OutlierDetector) ReportFailure(endpoint string) {
 	// Only (re)eject when not already ejected, so failures observed during a
 	// fall-open window don't compound the back-off prematurely.
 	if h.consecutiveFailures >= o.threshold && !h.ejectedUntil.After(now) {
-		duration := o.baseEjection * time.Duration(1<<h.ejectionCount)
-		if duration <= 0 || duration > o.maxEjection { // <= 0 guards shift overflow
-			duration = o.maxEjection
+		// Window doubles per prior ejection, capped at maxEjection. ejectionCount
+		// never resets, so guard the shift against int64 overflow on a long-lived
+		// flapping endpoint: a too-large or wrapped value falls back to the cap.
+		duration := o.maxEjection
+		if h.ejectionCount < 63 {
+			if scaled := o.baseEjection << h.ejectionCount; scaled > 0 && scaled < o.maxEjection {
+				duration = scaled
+			}
 		}
 		h.ejectedUntil = now.Add(duration)
 		h.ejectionCount++

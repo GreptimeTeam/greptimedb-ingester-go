@@ -131,6 +131,32 @@ func TestOutlierDetectorBackoffDoubles(t *testing.T) {
 	assert.Contains(t, candidatesOver(od, eps, 20), "a")
 }
 
+func TestOutlierDetectorBackoffNeverWrapsOnManyEjections(t *testing.T) {
+	clk := &fixedClock{now: time.Unix(0, 0)}
+	od := newTestDetector(clk, OutlierDetectorOptions{
+		ConsecutiveFailures: 1,
+		BaseEjection:        30 * time.Second,
+		MaxEjection:         300 * time.Second,
+	})
+	eps := []string{"a", "b"}
+
+	// Re-eject "a" many times; ejectionCount climbs well past the int64 shift
+	// width. Each window must stay within (0, maxEjection] — never wrap to a
+	// short or negative window.
+	for i := 0; i < 70; i++ {
+		od.ReportFailure("a")
+		od.mu.Lock()
+		h := od.health["a"]
+		window := h.ejectedUntil.Sub(clk.Now())
+		od.mu.Unlock()
+		assert.Greater(t, window, time.Duration(0), "ejection %d window must be positive", i)
+		assert.LessOrEqual(t, window, 300*time.Second, "ejection %d window must not exceed maxEjection", i)
+		// Expire the window so the next ReportFailure re-ejects.
+		clk.advance(window + time.Second)
+		_ = candidatesOver(od, eps, 1) // lazy re-admission check
+	}
+}
+
 func TestOutlierDetectorSuccessResetsStreak(t *testing.T) {
 	clk := &fixedClock{now: time.Unix(0, 0)}
 	od := newTestDetector(clk, OutlierDetectorOptions{ConsecutiveFailures: 3})
