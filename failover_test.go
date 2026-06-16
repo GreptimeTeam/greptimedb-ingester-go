@@ -207,11 +207,13 @@ func TestFailoverCancellationDuringBackoffStops(t *testing.T) {
 
 func TestIsRetryable(t *testing.T) {
 	assert.True(t, isRetryable(status.Error(codes.Unavailable, "")))
-	assert.True(t, isRetryable(status.Error(codes.DeadlineExceeded, "")))
 	assert.True(t, isRetryable(status.Error(codes.ResourceExhausted, "")))
 	assert.True(t, isRetryable(status.Error(codes.Aborted, "")))
 	assert.True(t, isRetryable(status.Error(codes.Unknown, "")))
 
+	// DeadlineExceeded is the caller's elapsed deadline (no per-attempt
+	// deadline exists) — retrying reuses the same expired context.
+	assert.False(t, isRetryable(status.Error(codes.DeadlineExceeded, "")))
 	assert.False(t, isRetryable(nil))
 	assert.False(t, isRetryable(status.Error(codes.InvalidArgument, "")))
 	assert.False(t, isRetryable(status.Error(codes.NotFound, "")))
@@ -221,9 +223,10 @@ func TestIsRetryable(t *testing.T) {
 
 func TestIsEndpointFailure(t *testing.T) {
 	assert.True(t, isEndpointFailure(status.Error(codes.Unavailable, "")))
-	assert.True(t, isEndpointFailure(status.Error(codes.DeadlineExceeded, "")))
 	assert.True(t, isEndpointFailure(status.Error(codes.ResourceExhausted, "")))
 
+	// DeadlineExceeded reflects the caller's clock, not endpoint health.
+	assert.False(t, isEndpointFailure(status.Error(codes.DeadlineExceeded, "")))
 	// Retryable transient but not an endpoint-health signal.
 	assert.False(t, isEndpointFailure(status.Error(codes.Aborted, "")))
 	assert.False(t, isEndpointFailure(status.Error(codes.Unknown, "")))
@@ -231,6 +234,28 @@ func TestIsEndpointFailure(t *testing.T) {
 	assert.False(t, isEndpointFailure(status.Error(codes.InvalidArgument, "")))
 	assert.False(t, isEndpointFailure(nil))
 	assert.False(t, isEndpointFailure(context.Canceled))
+}
+
+// A caller deadline/cancel that fires while the RPC is in flight must stop
+// immediately: no retry, and no health penalty against the endpoint (it may be
+// perfectly healthy — the caller simply ran out of time).
+func TestFailoverCallerDeadlineNotRetriedNorReported(t *testing.T) {
+	sel := &recordingSelector{}
+	ctx, cancel := context.WithCancel(context.Background())
+	var calls int
+
+	_, err := runWithFailover(ctx, testAddrs, sel, sel, fastRetry(),
+		func(peer string) (int, error) {
+			calls++
+			cancel() // caller's context elapses during the RPC
+			return 0, status.Error(codes.DeadlineExceeded, "deadline")
+		})
+
+	require.Error(t, err)
+	assert.Equal(t, codes.DeadlineExceeded, status.Code(err))
+	assert.Equal(t, 1, calls, "caller deadline must not trigger a retry")
+	assert.Empty(t, sel.failures, "caller deadline must not eject the endpoint")
+	assert.Empty(t, sel.successes)
 }
 
 func TestComputeBackoffCapsAndGrows(t *testing.T) {

@@ -71,11 +71,15 @@ becomes unreachable, instead of surfacing every transient transport error to
 the caller.
 
 **Retry across endpoints.** Unary calls retry on retryable transport failures
-(`Unavailable`, `DeadlineExceeded`, `ResourceExhausted`, `Aborted`, `Unknown`),
-re-picking a *different* endpoint each attempt — a single dead endpoint cannot
-burn the whole retry budget. Server business errors (e.g. `InvalidArgument`,
-`TableNotFound`) are never retried. The policy is configurable; the default is
-three attempts with exponential backoff and full jitter:
+(`Unavailable`, `ResourceExhausted`, `Aborted`, `Unknown`), re-picking a
+*different* endpoint each attempt — a single dead endpoint cannot burn the whole
+retry budget. Server business errors (e.g. `InvalidArgument`, `TableNotFound`)
+are never retried. Neither is `DeadlineExceeded` or context cancellation: the
+client forwards the caller's context to each attempt, so an elapsed deadline
+means the caller ran out of time — retrying would reuse the same expired
+context, and a healthy endpoint is not penalized for it. The policy is
+configurable; the default is three attempts with exponential backoff and full
+jitter:
 
 ```go
 cfg.WithRetry(greptime.RetryPolicy{

@@ -59,14 +59,21 @@ var DefaultRetryPolicy = RetryPolicy{
 }
 
 // isRetryable reports whether err is a transient transport failure worth
-// retrying on another endpoint. The retryable set mirrors the TypeScript
-// ingester's conservative codes. Caller-initiated cancellation never retries.
+// retrying on another endpoint.
+//
+// DeadlineExceeded is deliberately NOT retryable: this client forwards the
+// caller's context straight to each RPC (there is no per-attempt deadline), so
+// a DeadlineExceeded means the caller's own deadline elapsed. Retrying would
+// reuse the same expired context and is pointless. The cancellation guard keeps
+// a wrapped context.Canceled (which has no gRPC status, so it would otherwise
+// classify as Unknown) from being treated as retryable; runWithFailover's own
+// context check is the primary stop for caller cancellation.
 func isRetryable(err error) bool {
-	if err == nil || isCancellation(err) {
+	if isCancellation(err) {
 		return false
 	}
 	switch status.Code(err) {
-	case codes.Unknown, codes.DeadlineExceeded, codes.ResourceExhausted, codes.Aborted, codes.Unavailable:
+	case codes.Unknown, codes.ResourceExhausted, codes.Aborted, codes.Unavailable:
 		return true
 	default:
 		return false
@@ -77,20 +84,22 @@ func isRetryable(err error) bool {
 // unhealthy (connectivity or capacity) and should be temporarily avoided by a
 // health-aware selector. A server business error — even a retryable one — means
 // the endpoint is alive and routing correctly and must NOT eject it.
+//
+// DeadlineExceeded is excluded for the same reason as in isRetryable: it
+// reflects the caller's clock, not the endpoint's health, so a tight caller
+// deadline must never eject an otherwise-healthy endpoint.
 func isEndpointFailure(err error) bool {
-	if err == nil || isCancellation(err) {
-		return false
-	}
 	switch status.Code(err) {
-	case codes.DeadlineExceeded, codes.ResourceExhausted, codes.Unavailable:
+	case codes.ResourceExhausted, codes.Unavailable:
 		return true
 	default:
 		return false
 	}
 }
 
-// isCancellation reports whether err is a caller-initiated cancellation, which
-// says nothing about endpoint health and must never be retried.
+// isCancellation reports whether err is a server-returned cancellation, which
+// says nothing about endpoint health. Caller-initiated cancellation/deadline is
+// detected via the context directly (see runWithFailover), not here.
 func isCancellation(err error) bool {
 	return errors.Is(err, context.Canceled) || status.Code(err) == codes.Canceled
 }
@@ -130,12 +139,19 @@ func runWithFailover[T any](
 
 		peer := selector.Select(addrs, failed)
 		res, err := call(peer)
-		reportOutcome(health, peer, err)
 		if err == nil {
+			reportOutcome(health, peer, nil)
 			return res, nil
+		}
+		// Caller-initiated cancellation or deadline: the endpoint may be
+		// perfectly healthy, the caller simply ran out of time. Stop without
+		// retrying and without blaming the endpoint's health.
+		if ctx.Err() != nil {
+			return zero, err
 		}
 
 		failed[peer] = struct{}{}
+		reportOutcome(health, peer, err)
 		lastErr = err
 		if attempt == attempts-1 || !isRetryable(err) {
 			break
