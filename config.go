@@ -204,8 +204,9 @@ func (c *Config) WithLoadBalancer(picker loadbalancer.Picker) *Config {
 }
 
 // WithRetry overrides the retry policy for unary failover. Unary calls (Write,
-// Delete, HealthCheck) retry on retryable transport failures, steering to other
-// healthy endpoints. Defaults to DefaultRetryPolicy when unset.
+// Delete, HealthCheck) retry on retryable transport failures and transient
+// GreptimeDB server errors, steering to other healthy endpoints. Defaults to
+// DefaultRetryPolicy when unset.
 func (c *Config) WithRetry(policy RetryPolicy) *Config {
 	c.retry = &policy
 	return c

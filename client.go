@@ -41,11 +41,12 @@ import (
 //
 // When configured with multiple endpoints via Config.WithEndpoints, unary
 // calls (Write, Delete, HealthCheck) select an endpoint per call through the
-// configured loadbalancer and retry retryable transport failures on another
-// healthy endpoint, per the RetryPolicy (see Config.WithRetry). With a
-// health-aware load balancer (loadbalancer.NewOutlierDetector) endpoints that
-// fail repeatedly are temporarily ejected from selection and re-admitted after
-// a back-off window or a fresh success.
+// configured loadbalancer and retry retryable transport failures or transient
+// GreptimeDB server errors on another healthy endpoint, per the RetryPolicy
+// (see Config.WithRetry). With a health-aware load balancer
+// (loadbalancer.NewOutlierDetector) endpoints that fail repeatedly are
+// temporarily ejected from selection and re-admitted after a back-off window or
+// a fresh success.
 //
 // BulkWrite selects one healthy endpoint and is not auto-retried (a mid-stream
 // bulk failure may have already landed rows). A streaming session opened by

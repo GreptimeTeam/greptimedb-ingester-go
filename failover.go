@@ -32,8 +32,9 @@ import (
 )
 
 // RetryPolicy controls how unary calls (Write, Delete, HealthCheck) are retried
-// across endpoints on retryable transport failures. Streaming and bulk calls
-// are not auto-retried; see the package README.
+// across endpoints on retryable transport failures and transient GreptimeDB
+// server errors. Streaming and bulk calls are not auto-retried; see the package
+// README.
 type RetryPolicy struct {
 	// MaxAttempts is the total number of attempts including the first. Values
 	// below 1 are treated as 1 (no retry).
@@ -208,9 +209,6 @@ func runWithFailover[T any](
 	var lastErr error
 	for attempt := 0; attempt < attempts; attempt++ {
 		if err := ctx.Err(); err != nil {
-			if lastErr != nil {
-				return zero, lastErr
-			}
 			return zero, err
 		}
 
@@ -264,7 +262,7 @@ func reportOutcome(health loadbalancer.HealthReporter, peer string, err error) {
 func sleepBackoff(ctx context.Context, policy RetryPolicy, attempt int) error {
 	d := computeBackoff(policy, attempt)
 	if d <= 0 {
-		return ctx.Err()
+		return nil
 	}
 	t := time.NewTimer(d)
 	defer t.Stop()

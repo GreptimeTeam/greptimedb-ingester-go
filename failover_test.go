@@ -78,6 +78,13 @@ func (s *recordingSelector) ReportSuccess(endpoint string) {
 }
 func (s *recordingSelector) ReportFailure(endpoint string) { s.failures = append(s.failures, endpoint) }
 
+type cancelOnFailure struct {
+	cancel func()
+}
+
+func (h cancelOnFailure) ReportSuccess(endpoint string) {}
+func (h cancelOnFailure) ReportFailure(endpoint string) { h.cancel() }
+
 var testAddrs = []string{"h1:4001", "h2:4001"}
 
 func fastRetry() RetryPolicy {
@@ -213,6 +220,22 @@ func TestFailoverCancellationDuringBackoffStops(t *testing.T) {
 		func(peer string) (int, error) { return 0, unavailable() })
 
 	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestFailoverCancelledBeforeNextAttemptReturnsContextError(t *testing.T) {
+	sel := &recordingSelector{}
+	ctx, cancel := context.WithCancel(context.Background())
+	policy := RetryPolicy{MaxAttempts: 3, InitialBackoff: 0, MaxBackoff: 0, BackoffMultiplier: 2}
+	var calls int
+
+	_, err := runWithFailover(ctx, testAddrs, sel, cancelOnFailure{cancel: cancel}, policy,
+		func(peer string) (int, error) {
+			calls++
+			return 0, unavailable()
+		})
+
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Equal(t, 1, calls, "must stop before the next attempt")
 }
 
 func TestIsRetryable(t *testing.T) {
