@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-// Writes to several GreptimeDB endpoints with client-side load balancing.
+// Writes to several GreptimeDB endpoints with client-side load balancing and
+// health-aware failover.
 package main
 
 import (
@@ -34,7 +35,22 @@ func main() {
 	cfg := greptime.NewConfig().
 		WithDatabase(database).
 		WithEndpoints("127.0.0.1:4001", "127.0.0.2:4001", "127.0.0.3:4001").
-		WithLoadBalancer(loadbalancer.NewRoundRobin()) // default is NewRandom()
+		// Health-aware failover: eject an endpoint after consecutive transport
+		// failures and round-robin among the healthy ones. Drop this call to use
+		// the default stateless NewRandom() picker.
+		WithLoadBalancer(loadbalancer.NewOutlierDetector(loadbalancer.OutlierDetectorOptions{
+			Base:                loadbalancer.NewRoundRobin(),
+			ConsecutiveFailures: 3,
+			BaseEjection:        30 * time.Second,
+		})).
+		// Retry retryable transport failures on another healthy endpoint.
+		WithRetry(greptime.RetryPolicy{
+			MaxAttempts:       3,
+			InitialBackoff:    100 * time.Millisecond,
+			MaxBackoff:        5 * time.Second,
+			BackoffMultiplier: 2,
+			Jitter:            true,
+		})
 
 	client, err := greptime.NewClient(cfg)
 	if err != nil {

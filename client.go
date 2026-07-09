@@ -24,6 +24,8 @@ import (
 	"sync/atomic"
 
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/internal/pool"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
@@ -38,14 +40,30 @@ import (
 // use by multiple goroutines; one instance per application is typical.
 //
 // When configured with multiple endpoints via Config.WithEndpoints, unary
-// calls (Write, Delete, HealthCheck, BulkWrite) pick an endpoint per call
-// through the configured loadbalancer.Picker. A streaming session opened by
-// StreamWrite/StreamDelete binds to a single endpoint until CloseStream;
-// if that endpoint fails mid-stream, the Send returns the underlying error
-// and the next StreamWrite call picks a fresh endpoint to open a new stream.
+// calls (Write, Delete, HealthCheck) select an endpoint per call through the
+// configured loadbalancer and retry retryable transport failures or transient
+// GreptimeDB server errors on another healthy endpoint, per the RetryPolicy
+// (see Config.WithRetry). With a health-aware load balancer
+// (loadbalancer.NewOutlierDetector) endpoints that fail repeatedly are
+// temporarily ejected from selection and re-admitted after a back-off window or
+// a fresh success.
+//
+// BulkWrite selects one healthy endpoint and is not auto-retried (a mid-stream
+// bulk failure may have already landed rows). A streaming session opened by
+// StreamWrite/StreamDelete binds to a single endpoint until CloseStream; if
+// that endpoint fails mid-stream the Send returns the underlying error and the
+// next StreamWrite picks a fresh endpoint to open a new stream. Both feed the
+// load balancer's health state so a failed endpoint is avoided on the next pick.
 type Client struct {
 	cfg  *Config
 	pool *pool.Pool
+
+	// selector turns the endpoint list into one address per call, honoring an
+	// exclude set during a retry sequence. health is the same instance when the
+	// configured picker reports endpoint health, nil otherwise.
+	selector loadbalancer.Selector
+	health   loadbalancer.HealthReporter
+	retry    RetryPolicy
 
 	// closed guards Close against repeated invocations. The pool pointer
 	// itself is intentionally left stable after Close so that any RPC still
@@ -55,6 +73,9 @@ type Client struct {
 
 	streamMu sync.Mutex
 	stream   gpb.GreptimeDatabase_HandleRequestsClient
+	// streamPeer is the endpoint the cached stream is bound to, used to report
+	// the stream's terminal health outcome.
+	streamPeer string
 }
 
 // NewClient creates the greptimedb client responsible for writing data into
@@ -76,23 +97,42 @@ func NewClient(cfg *Config) (*Client, error) {
 		picker = loadbalancer.NewRandom()
 	}
 
-	p, err := pool.New(addrs, picker, cfg.build())
+	p, err := pool.New(addrs, cfg.build())
 	if err != nil {
 		return nil, err
 	}
 
-	return &Client{cfg: cfg, pool: p}, nil
+	c := &Client{
+		cfg:      cfg,
+		pool:     p,
+		selector: loadbalancer.AsSelector(picker),
+		retry:    cfg.retryPolicy(),
+	}
+	// A health-aware picker (e.g. OutlierDetector) drives ejection; stateless
+	// pickers leave health nil and only the per-sequence exclude steering applies.
+	if hr, ok := picker.(loadbalancer.HealthReporter); ok {
+		c.health = hr
+	}
+	return c, nil
 }
 
-// submit builds a request and dispatches it to a picked endpoint. picking
-// fresh per call keeps the path retry-friendly once a retry layer lands.
+// submit builds a request once and dispatches it across endpoints with failover
+// retry. Request building happens before the loop so a client-side encode error
+// fails immediately without consuming the retry budget or touching endpoint health.
 func (c *Client) submit(ctx context.Context, operation types.Operation, tables ...*table.Table) (*gpb.GreptimeResponse, error) {
 	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
 	request_, err := request.New(header_, operation, tables...).Build()
 	if err != nil {
 		return nil, err
 	}
-	return c.pool.Pick().DB.Handle(ctx, request_)
+	return runWithFailover(ctx, c.pool.Addrs(), c.selector, c.health, c.retry,
+		func(peer string) (*gpb.GreptimeResponse, error) {
+			// Capture the response trailer so a GreptimeDB business error can be
+			// classified by its precise status code, not just the lossy gRPC code.
+			var trailer metadata.MD
+			resp, err := c.pool.Get(peer).DB.Handle(ctx, request_, grpc.Trailer(&trailer))
+			return resp, withServerStatus(err, trailer)
+		})
 }
 
 // Write is to write the data into GreptimeDB via explicit schema.
@@ -203,11 +243,14 @@ func (c *Client) streamSubmit(ctx context.Context, operation types.Operation, ta
 	defer c.streamMu.Unlock()
 
 	if c.stream == nil {
-		s, err := c.pool.Pick().DB.HandleRequests(ctx)
+		peer := c.selector.Select(c.pool.Addrs(), nil)
+		s, err := c.pool.Get(peer).DB.HandleRequests(ctx)
 		if err != nil {
+			reportOutcome(c.health, peer, err)
 			return err
 		}
 		c.stream = s
+		c.streamPeer = peer
 	}
 
 	header_ := header.New(c.cfg.Database).WithAuth(c.cfg.Username, c.cfg.Password)
@@ -216,8 +259,11 @@ func (c *Client) streamSubmit(ctx context.Context, operation types.Operation, ta
 		return err
 	}
 	if err := c.stream.Send(request_); err != nil {
-		// Clear the broken stream so the next call rebuilds on a fresh pick.
+		// Clear the broken stream so the next call rebuilds on a fresh pick,
+		// and let a health-aware selector steer away from the failed endpoint.
+		reportOutcome(c.health, c.streamPeer, err)
 		c.stream = nil
+		c.streamPeer = ""
 		return err
 	}
 	return nil
@@ -327,7 +373,10 @@ func (c *Client) CloseStream(_ context.Context) (*gpb.AffectedRows, error) {
 	}
 
 	resp, err := c.stream.CloseAndRecv()
+	peer := c.streamPeer
 	c.stream = nil
+	c.streamPeer = ""
+	reportOutcome(c.health, peer, err)
 	if err != nil {
 		return nil, err
 	}
@@ -336,11 +385,16 @@ func (c *Client) CloseStream(_ context.Context) (*gpb.AffectedRows, error) {
 }
 
 // HealthCheck will check GreptimeDB health status. With multiple endpoints
-// configured, HealthCheck probes whichever endpoint the picker returns for
-// this call, not every endpoint.
+// configured, HealthCheck probes whichever endpoint the selector returns for
+// this call (not every endpoint) and, being idempotent, retries on another
+// healthy endpoint on a retryable transport failure. A success re-admits a
+// previously ejected endpoint in a health-aware selector.
 func (c *Client) HealthCheck(ctx context.Context) (*gpb.HealthCheckResponse, error) {
 	req := &gpb.HealthCheckRequest{}
-	return c.pool.Pick().Health.HealthCheck(ctx, req)
+	return runWithFailover(ctx, c.pool.Addrs(), c.selector, c.health, c.retry,
+		func(peer string) (*gpb.HealthCheckResponse, error) {
+			return c.pool.Get(peer).Health.HealthCheck(ctx, req)
+		})
 }
 
 // Close terminates all underlying gRPC connections. Any active stream is
@@ -363,6 +417,15 @@ func (c *Client) Close() error {
 // BulkWrite performs a high-efficiency bulk data write operation to GreptimeDB using Apache Arrow format.
 // It sends the entire table data in a single batch, which is more efficient for large datasets compared to row-by-row writes.
 // The table must have columns and rows properly defined before calling this method.
+//
+// BulkWrite selects one healthy endpoint via the configured load balancer and
+// reports the outcome to its health state, but is not auto-retried: a bulk
+// failure may have already landed part of the batch, so transparent retry could
+// duplicate rows. On failure, rebuild by calling BulkWrite again — a
+// health-aware selector then steers away from the endpoint that just failed.
 func (c *Client) BulkWrite(ctx context.Context, table *table.Table) (*gpb.GreptimeResponse, error) {
-	return c.pool.Pick().Bulk.BulkWrite(ctx, table)
+	peer := c.selector.Select(c.pool.Addrs(), nil)
+	resp, err := c.pool.Get(peer).Bulk.BulkWrite(ctx, table)
+	reportOutcome(c.health, peer, err)
+	return resp, err
 }

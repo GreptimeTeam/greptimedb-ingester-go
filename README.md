@@ -48,11 +48,8 @@ cfg.WithKeepalive(time.Second*30, time.Second*5) // keepalive isn't enabled by d
 ##### Multiple endpoints
 
 Configure several GreptimeDB endpoints to spread writes across an HA cluster.
-Unary calls (`Write`, `Delete`, `HealthCheck`, `BulkWrite`) pick an endpoint
-per call through the configured picker. A streaming session started by
-`StreamWrite` / `StreamDelete` binds to one endpoint until `CloseStream`; if
-that endpoint fails mid-stream the Send returns the error and the next
-`StreamWrite` picks a fresh endpoint. Auth, TLS, keepalive and telemetry are
+Unary calls (`Write`, `Delete`, `HealthCheck`) select an endpoint per call
+through the configured load balancer. Auth, TLS, keepalive and telemetry are
 shared across all endpoints.
 
 ```go
@@ -65,7 +62,67 @@ cfg := greptime.NewConfig().
 ```
 
 See [`examples/multi_endpoint`](examples/multi_endpoint/main.go) for a runnable
-demo that reports per-endpoint dispatch counts.
+configuration example with health-aware failover.
+
+##### Failover
+
+For an HA deployment, the client can fail over to another endpoint when one
+becomes unreachable, instead of surfacing every transient transport error to
+the caller.
+
+**Retry across endpoints.** Unary calls retry on retryable failures, re-picking
+a *different* endpoint each attempt — a single dead endpoint cannot burn the
+whole retry budget. Retryable means:
+
+- transport failures: `Unavailable`, `ResourceExhausted`, `Aborted`, `Unknown`;
+- transient GreptimeDB server errors, classified by the precise status code
+  carried in the `x-greptime-err-code` trailer: `RegionNotReady`, `RegionBusy`,
+  `TableUnavailable`, `StorageUnavailable`, `RuntimeResourcesExhausted`.
+
+The precise status code matters because the server collapses several codes onto
+one gRPC code (e.g. `RegionBusy` and `RateLimited` both surface as
+`ResourceExhausted`, but only `RegionBusy` is worth retrying). Other server
+errors (`InvalidArguments`, `TableNotFound`, auth failures, `Internal`) are
+never retried, and a server error never ejects the endpoint from a health-aware
+selector — it answered, so it is alive. Neither `DeadlineExceeded` nor context
+cancellation is retried: the client forwards the caller's context to each
+attempt, so an elapsed deadline means the caller ran out of time. The policy is
+configurable; the default is three attempts with exponential backoff and full
+jitter:
+
+```go
+cfg.WithRetry(greptime.RetryPolicy{
+    MaxAttempts:       3,
+    InitialBackoff:    100 * time.Millisecond,
+    MaxBackoff:        5 * time.Second,
+    BackoffMultiplier: 2,
+    Jitter:            true,
+})
+```
+
+**Health-aware ejection.** With `loadbalancer.NewOutlierDetector`, an endpoint
+that fails repeatedly (transport-level only) is temporarily ejected from
+selection and re-admitted after a back-off window (which doubles on repeated
+ejection) or as soon as it serves a successful call. A server business error
+keeps the endpoint in rotation — it proves the endpoint is alive and routing
+correctly.
+
+```go
+cfg.WithLoadBalancer(loadbalancer.NewOutlierDetector(loadbalancer.OutlierDetectorOptions{
+    Base:                loadbalancer.NewRoundRobin(), // selection among healthy peers; default NewRandom
+    ConsecutiveFailures: 5,                            // failures in a row before ejection
+    BaseEjection:        30 * time.Second,             // first ejection window
+    MaxEjection:         300 * time.Second,            // ceiling for a single ejection
+}))
+```
+
+**Boundaries.** `BulkWrite` selects one healthy endpoint and reports its health,
+but is not auto-retried: a mid-stream bulk failure may have already landed rows,
+so a transparent retry could duplicate them — rebuild by calling `BulkWrite`
+again. A streaming session (`StreamWrite` / `StreamDelete`) binds to one
+endpoint until `CloseStream`; if it fails mid-stream the `Send` returns the
+error and the next `StreamWrite` picks a fresh endpoint. Both feed the load
+balancer's health state so a failed endpoint is avoided on the next pick.
 
 ### Client
 

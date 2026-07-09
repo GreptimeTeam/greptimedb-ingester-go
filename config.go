@@ -50,8 +50,15 @@ type Config struct {
 	endpoints []string
 
 	// picker selects an endpoint per RPC when more than one is configured.
-	// Defaults to loadbalancer.NewRandom() at client construction time.
+	// Defaults to loadbalancer.NewRandom() at client construction time. A
+	// picker that also implements loadbalancer.HealthReporter (e.g.
+	// loadbalancer.NewOutlierDetector) additionally drives health-aware
+	// failover.
 	picker loadbalancer.Picker
+
+	// retry overrides the unary failover retry policy. nil uses
+	// DefaultRetryPolicy.
+	retry *RetryPolicy
 
 	tls     *options.TlsOption
 	options []grpc.DialOption
@@ -188,10 +195,29 @@ func (c *Config) WithEndpoints(endpoints ...string) *Config {
 
 // WithLoadBalancer sets the load-balancing strategy used when more than one
 // endpoint is configured. Defaults to loadbalancer.NewRandom() when unset.
-// Has no observable effect when only a single endpoint is in use.
+// Pass loadbalancer.NewOutlierDetector to enable health-aware failover that
+// temporarily ejects endpoints after consecutive transport failures. Has no
+// observable effect when only a single endpoint is in use.
 func (c *Config) WithLoadBalancer(picker loadbalancer.Picker) *Config {
 	c.picker = picker
 	return c
+}
+
+// WithRetry overrides the retry policy for unary failover. Unary calls (Write,
+// Delete, HealthCheck) retry on retryable transport failures and transient
+// GreptimeDB server errors, steering to other healthy endpoints. Defaults to
+// DefaultRetryPolicy when unset.
+func (c *Config) WithRetry(policy RetryPolicy) *Config {
+	c.retry = &policy
+	return c
+}
+
+// retryPolicy returns the configured policy, falling back to the default.
+func (c *Config) retryPolicy() RetryPolicy {
+	if c.retry != nil {
+		return *c.retry
+	}
+	return DefaultRetryPolicy
 }
 
 // resolveEndpoints returns the configured endpoints, falling back to
