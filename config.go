@@ -63,6 +63,9 @@ type Config struct {
 	tls     *options.TlsOption
 	options []grpc.DialOption
 
+	// keepalive holds the gRPC keepalive params; nil disables keepalive.
+	keepalive *options.KeepaliveOption
+
 	telemetry *options.TelemetryOptions
 }
 
@@ -76,9 +79,11 @@ type Config struct {
 //   - NewConfig("host1:4001", "host2:4001", ...) — equivalent to
 //     NewConfig().WithEndpoints(args...). WithPort has no effect.
 func NewConfig(hosts ...string) *Config {
+	defaultKeepalive := options.DefaultKeepaliveOption()
 	cfg := &Config{
 		Port: 4001,
 
+		keepalive: &defaultKeepalive,
 		telemetry: options.NewTelemetryOptions(),
 		options: []grpc.DialOption{
 			options.NewUserAgentOption(version).Build(),
@@ -123,15 +128,25 @@ func (c *Config) WithAuth(username, password string) *Config {
 	return c
 }
 
-// WithKeepalive helps to set the keepalive option.
+// WithKeepalive overrides the keepalive option. Keepalive is enabled by
+// default (30s ping interval, 10s timeout); call this only to tune it, or
+// WithoutKeepalive to turn it off.
 //   - time. After a duration of this time if the client doesn't see any activity it
 //     pings the server to see if the transport is still alive.
 //     If set below 10s, a minimum value of 10s will be used instead.
 //   - timeout. After having pinged for keepalive check, the client waits for a duration
 //     of Timeout and if no activity is seen even after that the connection is closed.
+//
+// A zero time or timeout falls back to the corresponding default.
 func (c *Config) WithKeepalive(time, timeout time.Duration) *Config {
-	keepalive := options.NewKeepaliveOption(time, timeout).Build()
-	c.options = append(c.options, keepalive)
+	keepalive := options.NewKeepaliveOption(time, timeout)
+	c.keepalive = &keepalive
+	return c
+}
+
+// WithoutKeepalive disables gRPC keepalive pings, which are enabled by default.
+func (c *Config) WithoutKeepalive() *Config {
+	c.keepalive = nil
 	return c
 }
 
@@ -240,6 +255,11 @@ func (c *Config) build() []grpc.DialOption {
 		c.tls = &opt
 	}
 
-	c.options = append(c.options, c.tls.Build(), c.telemetry.Build())
-	return c.options
+	// Copy to keep build idempotent and non-mutating.
+	opts := append([]grpc.DialOption(nil), c.options...)
+	if c.keepalive != nil {
+		opts = append(opts, c.keepalive.Build())
+	}
+	opts = append(opts, c.tls.Build(), c.telemetry.Build())
+	return opts
 }
