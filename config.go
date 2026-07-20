@@ -63,6 +63,9 @@ type Config struct {
 	tls     *options.TlsOption
 	options []grpc.DialOption
 
+	// keepalive holds the gRPC keepalive params; nil disables keepalive.
+	keepalive *options.KeepaliveOption
+
 	telemetry *options.TelemetryOptions
 }
 
@@ -76,9 +79,11 @@ type Config struct {
 //   - NewConfig("host1:4001", "host2:4001", ...) — equivalent to
 //     NewConfig().WithEndpoints(args...). WithPort has no effect.
 func NewConfig(hosts ...string) *Config {
+	defaultKeepalive := options.DefaultKeepaliveOption()
 	cfg := &Config{
 		Port: 4001,
 
+		keepalive: &defaultKeepalive,
 		telemetry: options.NewTelemetryOptions(),
 		options: []grpc.DialOption{
 			options.NewUserAgentOption(version).Build(),
@@ -123,15 +128,22 @@ func (c *Config) WithAuth(username, password string) *Config {
 	return c
 }
 
-// WithKeepalive helps to set the keepalive option.
-//   - time. After a duration of this time if the client doesn't see any activity it
-//     pings the server to see if the transport is still alive.
-//     If set below 10s, a minimum value of 10s will be used instead.
-//   - timeout. After having pinged for keepalive check, the client waits for a duration
-//     of Timeout and if no activity is seen even after that the connection is closed.
-func (c *Config) WithKeepalive(time, timeout time.Duration) *Config {
-	keepalive := options.NewKeepaliveOption(time, timeout).Build()
-	c.options = append(c.options, keepalive)
+// WithKeepalive overrides the default keepalive (30s interval, 10s timeout);
+// use WithoutKeepalive to turn it off.
+//   - interval: idle duration before the client pings to check liveness. gRPC
+//     clamps this to a 10s minimum.
+//   - timeout: how long to wait for a ping ack before closing the connection.
+//
+// A zero interval or timeout falls back to the default.
+func (c *Config) WithKeepalive(interval, timeout time.Duration) *Config {
+	keepalive := options.NewKeepaliveOption(interval, timeout)
+	c.keepalive = &keepalive
+	return c
+}
+
+// WithoutKeepalive disables gRPC keepalive pings, which are enabled by default.
+func (c *Config) WithoutKeepalive() *Config {
+	c.keepalive = nil
 	return c
 }
 
@@ -240,6 +252,11 @@ func (c *Config) build() []grpc.DialOption {
 		c.tls = &opt
 	}
 
-	c.options = append(c.options, c.tls.Build(), c.telemetry.Build())
-	return c.options
+	// Copy so repeated builds don't append onto the caller's slice.
+	opts := append([]grpc.DialOption(nil), c.options...)
+	if c.keepalive != nil {
+		opts = append(opts, c.keepalive.Build())
+	}
+	opts = append(opts, c.tls.Build(), c.telemetry.Build())
+	return opts
 }

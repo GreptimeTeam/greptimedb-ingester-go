@@ -25,8 +25,13 @@ import (
 
 var (
 	defaultKeepaliveTime    = time.Second * 30
-	defaultKeepaliveTimeout = time.Second * 5
+	defaultKeepaliveTimeout = time.Second * 10
 )
+
+// DefaultKeepaliveOption is the keepalive applied when none is set explicitly.
+func DefaultKeepaliveOption() KeepaliveOption {
+	return NewKeepaliveOption(defaultKeepaliveTime, defaultKeepaliveTimeout)
+}
 
 type KeepaliveOption struct {
 	time    time.Duration

@@ -18,6 +18,7 @@ package greptime
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -119,6 +120,24 @@ func TestNewClientInvalidEndpoint(t *testing.T) {
 	_, err := NewClient(NewConfig().WithEndpoints("missing-port"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid endpoint")
+}
+
+func TestKeepaliveEnabledByDefault(t *testing.T) {
+	cfg := NewConfig("127.0.0.1:4001")
+	require.NotNil(t, cfg.keepalive, "keepalive should be on by default")
+
+	withKA := len(cfg.build())
+	cfg.WithoutKeepalive()
+	assert.Nil(t, cfg.keepalive)
+	assert.Equal(t, withKA-1, len(cfg.build()), "disabling keepalive drops exactly one dial option")
+}
+
+func TestWithKeepaliveReplacesNotAppends(t *testing.T) {
+	base := len(NewConfig("127.0.0.1:4001").build())
+	cfg := NewConfig("127.0.0.1:4001").WithKeepalive(time.Minute, 20*time.Second)
+	require.NotNil(t, cfg.keepalive)
+	assert.Equal(t, base, len(cfg.build()),
+		"WithKeepalive replaces the default rather than appending a second option")
 }
 
 func TestNewClientWithoutPickerLeavesCfgUntouched(t *testing.T) {
