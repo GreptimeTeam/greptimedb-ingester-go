@@ -13,6 +13,32 @@ CREATE TABLE bulk_insert_table (
 );
 ```
 
+## Auto-create table (GreptimeDB Enterprise)
+
+When the target table does not exist yet, GreptimeDB Enterprise can auto-create
+it from the column metadata attached to the Arrow schema of the bulk write. Pass
+`bulk.WithAutoCreateSchema` when creating the bulk writer to enable it:
+
+```go
+response, err := c.client.BulkWriteWithOptions(ctx, data,
+	bulk.WithAutoCreateSchema(&bulk.AutoCreateSchema{
+		Columns: []bulk.AutoCreateColumn{
+			bulk.TagColumn("id"),
+			{Name: "host", Comment: "source host"},
+			bulk.FieldColumn("temperature"),
+			bulk.TimestampColumn("ts"),
+		},
+	}),
+)
+```
+
+Every column of the table is described by its semantic type: `tag` columns form
+the primary key (in order), exactly one `timestamp` column becomes the time
+index (written non-nullable), and the rest are `field` columns. Semantic types
+default to the ones declared by the table's schema, so only the columns you want
+to override or annotate need to appear in the list. JSON columns are flagged
+automatically with `greptime:type=Json`.
+
 ## Insert
 
 ```go

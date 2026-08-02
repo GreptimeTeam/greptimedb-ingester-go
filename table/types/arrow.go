@@ -139,7 +139,10 @@ func (c *ArrowConverter) convertToArrowType(dt gpbv1.ColumnDataType) (arrow.Data
 		return arrow.FixedWidthTypes.Boolean, nil
 	case gpbv1.ColumnDataType_STRING:
 		return arrow.BinaryTypes.String, nil
-	case gpbv1.ColumnDataType_BINARY:
+	case gpbv1.ColumnDataType_BINARY, gpbv1.ColumnDataType_JSON:
+		// JSON is serialized as its UTF-8 bytes and flagged with the
+		// greptime:type=Json metadata by the bulk writer's auto-create path so
+		// the server can tell it apart from a plain binary column.
 		return arrow.BinaryTypes.Binary, nil
 	case gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND:
 		return timestampTypeMs, nil
@@ -261,6 +264,10 @@ func (c *ArrowConverter) fillValue(builder array.Builder, value *gpbv1.Value, da
 	case *array.BinaryBuilder:
 		if value == nil {
 			b.AppendNull()
+		} else if s, ok := value.ValueData.(*gpbv1.Value_StringValue); ok {
+			// JSON values are transported as strings (see BuildJSON); store
+			// their UTF-8 bytes in the binary column.
+			b.Append([]byte(s.StringValue))
 		} else {
 			b.Append(value.GetBinaryValue())
 		}

@@ -44,6 +44,40 @@ func TestConvertToArrowType_DatetimeIsMicrosecond(t *testing.T) {
 	assert.Equal(t, dtType, tsType, "DATETIME must map to the same Arrow type as TIMESTAMP_MICROSECOND")
 }
 
+// JSON columns are serialized as their UTF-8 bytes into an Arrow binary array,
+// mirroring how the server stores JSON and how the bulk auto-create path flags
+// them with greptime:type=Json.
+func TestToArrow_JsonColumn(t *testing.T) {
+	rows := &gpbv1.Rows{
+		Schema: []*gpbv1.ColumnSchema{
+			{
+				ColumnName:   "payload",
+				SemanticType: gpbv1.SemanticType_FIELD,
+				Datatype:     gpbv1.ColumnDataType_JSON,
+			},
+		},
+		Rows: []*gpbv1.Row{
+			{
+				Values: []*gpbv1.Value{
+					{ValueData: &gpbv1.Value_StringValue{StringValue: `{"a":1}`}},
+				},
+			},
+		},
+	}
+
+	record, err := NewArrowConverter().ToArrow(rows)
+	require.NoError(t, err)
+	defer record.Release()
+
+	require.Equal(t, int64(1), record.NumRows())
+	require.Equal(t, int64(1), record.NumCols())
+	assert.Equal(t, arrow.BinaryTypes.Binary, record.Schema().Field(0).Type)
+
+	col, ok := record.Column(0).(*array.Binary)
+	require.True(t, ok, "column must be *array.Binary")
+	assert.Equal(t, []byte(`{"a":1}`), col.Value(0))
+}
+
 func TestToArrow_DatetimeColumn(t *testing.T) {
 	now := time.Date(2026, 4, 21, 10, 30, 45, 123456000, time.UTC)
 	micros := now.UnixMicro()

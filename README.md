@@ -124,6 +124,13 @@ endpoint until `CloseStream`; if it fails mid-stream the `Send` returns the
 error and the next `StreamWrite` picks a fresh endpoint. Both feed the load
 balancer's health state so a failed endpoint is avoided on the next pick.
 
+**Auto-create.** When the target table does not exist yet, GreptimeDB
+Enterprise can create it from the column metadata attached to the Arrow schema
+of a bulk write. Pass `bulk.WithAutoCreateSchema` to `BulkWriteWithOptions` (or
+to `bulk.BulkClient.NewBulkWriter`) to declare each column's semantic type
+(`tag`, `field` or `timestamp`) and optional comment. See
+[examples/bulkwrite](examples/bulkwrite/README.md) for a full example.
+
 ### Client
 
 ```go
