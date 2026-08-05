@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/GreptimeTeam/greptimedb-ingester-go/bulk"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/internal/pool"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/request"
@@ -424,8 +425,20 @@ func (c *Client) Close() error {
 // duplicate rows. On failure, rebuild by calling BulkWrite again — a
 // health-aware selector then steers away from the endpoint that just failed.
 func (c *Client) BulkWrite(ctx context.Context, table *table.Table) (*gpb.GreptimeResponse, error) {
+	return c.BulkWriteWithOptions(ctx, table)
+}
+
+// BulkWriteWithOptions performs a bulk write with the given writer options.
+// It behaves like BulkWrite, and additionally applies the provided writer
+// options (e.g. bulk.WithAutoCreateSchema) when creating the underlying bulk
+// writer.
+func (c *Client) BulkWriteWithOptions(
+	ctx context.Context,
+	table *table.Table,
+	opts ...bulk.WriterOption,
+) (*gpb.GreptimeResponse, error) {
 	peer := c.selector.Select(c.pool.Addrs(), nil)
-	resp, err := c.pool.Get(peer).Bulk.BulkWrite(ctx, table)
+	resp, err := c.pool.Get(peer).Bulk.BulkWriteWithOptions(ctx, table, opts...)
 	reportOutcome(c.health, peer, err)
 	return resp, err
 }

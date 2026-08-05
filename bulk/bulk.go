@@ -57,10 +57,15 @@ type BulkWriter interface {
 	Close() (uint32, error)
 }
 
+// WriterOption configures a BulkWriter.
+type WriterOption func(*bulkWriter)
+
 type bulkWriter struct {
 	client *BulkClient
 	stream flight.FlightService_DoPutClient
 	writer *flight.Writer
+
+	autoCreate *AutoCreateSchema // attaches auto-create metadata to written schemas
 
 	recvDone chan struct{} // closed when the recv goroutine exits
 	mu       sync.RWMutex
@@ -70,17 +75,23 @@ type bulkWriter struct {
 
 // NewBulkWriter creates a new BulkWriter instance for streaming data to GreptimeDB.
 // Callers must call Close when done to release resources and stop the background goroutine.
-func (c *BulkClient) NewBulkWriter(ctx context.Context) (BulkWriter, error) {
+func (c *BulkClient) NewBulkWriter(ctx context.Context, opts ...WriterOption) (BulkWriter, error) {
+	bw := &bulkWriter{
+		client:   c,
+		recvDone: make(chan struct{}),
+	}
+	for _, opt := range opts {
+		opt(bw)
+	}
+	if bw.autoCreate != nil {
+		ctx = withAutoCreateTableHint(ctx)
+	}
+
 	stream, err := c.client.DoPut(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	bw := &bulkWriter{
-		client:   c,
-		stream:   stream,
-		recvDone: make(chan struct{}),
-	}
+	bw.stream = stream
 	go bw.recvLoop()
 	return bw, nil
 }
@@ -131,9 +142,19 @@ func (bw *bulkWriter) Write(tb *table.Table) error {
 		return err
 	}
 
-	record, err := converter.ToArrow(tb.GetRows())
+	rows := tb.GetRows()
+	record, err := converter.ToArrow(rows)
 	if err != nil {
 		return fmt.Errorf("failed to convert to Arrow: %w", err)
+	}
+	if bw.autoCreate != nil {
+		enriched, err := applyAutoCreateMetadata(record, rows.Schema, bw.autoCreate)
+		if err != nil {
+			record.Release()
+			return fmt.Errorf("failed to apply auto-create schema metadata: %w", err)
+		}
+		record.Release()
+		record = enriched
 	}
 	defer record.Release()
 
@@ -176,7 +197,17 @@ func (bw *bulkWriter) Close() (uint32, error) {
 
 // BulkWrite performs a single bulk write operation with the given table data.
 func (c *BulkClient) BulkWrite(ctx context.Context, tb *table.Table) (*gpbv1.GreptimeResponse, error) {
-	bw, err := c.NewBulkWriter(ctx)
+	return c.BulkWriteWithOptions(ctx, tb)
+}
+
+// BulkWriteWithOptions performs a single bulk write operation with the given
+// table data, applying the provided writer options (e.g. WithAutoCreateSchema).
+func (c *BulkClient) BulkWriteWithOptions(
+	ctx context.Context,
+	tb *table.Table,
+	opts ...WriterOption,
+) (*gpbv1.GreptimeResponse, error) {
+	bw, err := c.NewBulkWriter(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}

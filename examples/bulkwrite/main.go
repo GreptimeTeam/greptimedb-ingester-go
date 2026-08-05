@@ -23,6 +23,7 @@ import (
 	"time"
 
 	greptime "github.com/GreptimeTeam/greptimedb-ingester-go"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/bulk"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
@@ -97,7 +98,19 @@ func main() {
 	data := initData()
 	log.Printf("Writing %d rows to table", len(data.GetRows().Rows))
 
-	response, err := c.client.BulkWrite(context.TODO(), data)
+	// When the target table does not exist yet, GreptimeDB Enterprise can
+	// auto-create it from the schema metadata attached to the Arrow schema.
+	// The option also sends auto_create_table=true before opening the stream.
+	response, err := c.client.BulkWriteWithOptions(context.TODO(), data,
+		bulk.WithAutoCreateSchema(&bulk.AutoCreateSchema{
+			Columns: []bulk.AutoCreateColumn{
+				bulk.TagColumn("id"),
+				{Name: "host", Comment: "source host"},
+				bulk.FieldColumn("temperature"),
+				bulk.TimestampColumn("ts"),
+			},
+		}),
+	)
 	if err != nil {
 		log.Fatalf("BulkWrite failed after retries: %v", err)
 	}
