@@ -76,19 +76,22 @@ type bulkWriter struct {
 // NewBulkWriter creates a new BulkWriter instance for streaming data to GreptimeDB.
 // Callers must call Close when done to release resources and stop the background goroutine.
 func (c *BulkClient) NewBulkWriter(ctx context.Context, opts ...WriterOption) (BulkWriter, error) {
-	stream, err := c.client.DoPut(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	bw := &bulkWriter{
 		client:   c,
-		stream:   stream,
 		recvDone: make(chan struct{}),
 	}
 	for _, opt := range opts {
 		opt(bw)
 	}
+	if bw.autoCreate != nil {
+		ctx = withAutoCreateTableHint(ctx)
+	}
+
+	stream, err := c.client.DoPut(ctx)
+	if err != nil {
+		return nil, err
+	}
+	bw.stream = stream
 	go bw.recvLoop()
 	return bw, nil
 }

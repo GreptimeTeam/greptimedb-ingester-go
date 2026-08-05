@@ -17,17 +17,70 @@
 package bulk
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
 	gpbv1 "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/apache/arrow/go/v17/arrow"
+	"github.com/apache/arrow/go/v17/arrow/flight"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 )
+
+var errStopBeforeStreamCreation = errors.New("stop before stream creation")
+
+type contextCapturingFlightClient struct {
+	flight.FlightServiceClient
+	ctx context.Context
+}
+
+func (c *contextCapturingFlightClient) DoPut(
+	ctx context.Context,
+	_ ...grpc.CallOption,
+) (flight.FlightService_DoPutClient, error) {
+	c.ctx = ctx
+	return nil, errStopBeforeStreamCreation
+}
+
+func TestWithAutoCreateSchemaAddsFlightHintBeforeDoPut(t *testing.T) {
+	flightClient := &contextCapturingFlightClient{}
+	client := &BulkClient{client: flightClient}
+
+	_, err := client.NewBulkWriter(context.Background(), WithAutoCreateSchema(&AutoCreateSchema{
+		Columns: []AutoCreateColumn{TimestampColumn("ts")},
+	}))
+	require.ErrorIs(t, err, errStopBeforeStreamCreation)
+
+	md, ok := metadata.FromOutgoingContext(flightClient.ctx)
+	require.True(t, ok)
+	assert.Equal(t, []string{"true"}, md.Get("x-greptime-hint-auto_create_table"))
+}
+
+func TestWithAutoCreateSchemaPreservesAndUpdatesCombinedHints(t *testing.T) {
+	flightClient := &contextCapturingFlightClient{}
+	client := &BulkClient{client: flightClient}
+	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+		"authorization", "secret",
+		"x-greptime-hints", "ttl=7d,auto_create_table=false",
+	))
+
+	_, err := client.NewBulkWriter(ctx, WithAutoCreateSchema(&AutoCreateSchema{
+		Columns: []AutoCreateColumn{TimestampColumn("ts")},
+	}))
+	require.ErrorIs(t, err, errStopBeforeStreamCreation)
+
+	md, ok := metadata.FromOutgoingContext(flightClient.ctx)
+	require.True(t, ok)
+	assert.Equal(t, []string{"secret"}, md.Get("authorization"))
+	assert.Equal(t, []string{"ttl=7d,auto_create_table=true"}, md.Get("x-greptime-hints"))
+}
 
 func TestAutoCreateColumnConstructors(t *testing.T) {
 	tag := TagColumn("host")
@@ -157,6 +210,134 @@ func TestApplyAutoCreateMetadataRejectsInvalidSchemas(t *testing.T) {
 		})
 		require.ErrorContains(t, err, "ambiguous")
 	})
+}
+
+func TestApplyAutoCreateMetadataRequiresExactlyOneTimestamp(t *testing.T) {
+	t.Run("missing timestamp", func(t *testing.T) {
+		rows := &gpbv1.Rows{
+			Schema: []*gpbv1.ColumnSchema{{
+				ColumnName:   "value",
+				SemanticType: gpbv1.SemanticType_FIELD,
+				Datatype:     gpbv1.ColumnDataType_STRING,
+			}},
+			Rows: []*gpbv1.Row{{Values: []*gpbv1.Value{{
+				ValueData: &gpbv1.Value_StringValue{StringValue: "v"},
+			}}}},
+		}
+		record, err := types.NewArrowConverter().ToArrow(rows)
+		require.NoError(t, err)
+		defer record.Release()
+
+		_, err = applyAutoCreateMetadata(record, rows.Schema, &AutoCreateSchema{
+			Columns: []AutoCreateColumn{FieldColumn("value")},
+		})
+		require.ErrorContains(t, err, "exactly one timestamp")
+	})
+
+	t.Run("multiple timestamps", func(t *testing.T) {
+		rows := &gpbv1.Rows{
+			Schema: []*gpbv1.ColumnSchema{
+				{ColumnName: "ts1", SemanticType: gpbv1.SemanticType_TIMESTAMP, Datatype: gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND},
+				{ColumnName: "ts2", SemanticType: gpbv1.SemanticType_TIMESTAMP, Datatype: gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND},
+			},
+			Rows: []*gpbv1.Row{{Values: []*gpbv1.Value{
+				{ValueData: &gpbv1.Value_TimestampMillisecondValue{TimestampMillisecondValue: 1}},
+				{ValueData: &gpbv1.Value_TimestampMillisecondValue{TimestampMillisecondValue: 2}},
+			}}},
+		}
+		record, err := types.NewArrowConverter().ToArrow(rows)
+		require.NoError(t, err)
+		defer record.Release()
+
+		_, err = applyAutoCreateMetadata(record, rows.Schema, &AutoCreateSchema{
+			Columns: []AutoCreateColumn{TimestampColumn("ts1"), TimestampColumn("ts2")},
+		})
+		require.ErrorContains(t, err, "exactly one timestamp")
+	})
+}
+
+func TestApplyAutoCreateMetadataRejectsNonTimestampTimeIndex(t *testing.T) {
+	rows := &gpbv1.Rows{
+		Schema: []*gpbv1.ColumnSchema{{
+			ColumnName:   "ts",
+			SemanticType: gpbv1.SemanticType_TIMESTAMP,
+			Datatype:     gpbv1.ColumnDataType_STRING,
+		}},
+		Rows: []*gpbv1.Row{{Values: []*gpbv1.Value{{
+			ValueData: &gpbv1.Value_StringValue{StringValue: "not-a-timestamp"},
+		}}}},
+	}
+	record, err := types.NewArrowConverter().ToArrow(rows)
+	require.NoError(t, err)
+	defer record.Release()
+
+	_, err = applyAutoCreateMetadata(record, rows.Schema, &AutoCreateSchema{
+		Columns: []AutoCreateColumn{TimestampColumn("ts")},
+	})
+	require.ErrorContains(t, err, "must have Arrow timestamp type without timezone")
+}
+
+func TestApplyAutoCreateMetadataRejectsUnsupportedExtendedTypes(t *testing.T) {
+	rows := testRows(t, false)
+	record, err := types.NewArrowConverter().ToArrow(rows)
+	require.NoError(t, err)
+	defer record.Release()
+
+	t.Run("vector", func(t *testing.T) {
+		_, err := applyAutoCreateMetadata(record, rows.Schema, &AutoCreateSchema{
+			Columns: []AutoCreateColumn{{Name: "temperature", TypeOverride: "Vector(3)"}},
+		})
+		require.ErrorContains(t, err, "only Json is supported")
+	})
+
+	t.Run("json on non-binary Arrow field", func(t *testing.T) {
+		_, err := applyAutoCreateMetadata(record, rows.Schema, &AutoCreateSchema{
+			Columns: []AutoCreateColumn{{Name: "temperature", TypeOverride: "Json"}},
+		})
+		require.ErrorContains(t, err, "requires Arrow Binary type")
+	})
+}
+
+func TestApplyAutoCreateMetadataRejectsInvalidSemanticType(t *testing.T) {
+	rows := &gpbv1.Rows{
+		Schema: []*gpbv1.ColumnSchema{
+			{ColumnName: "ts", SemanticType: gpbv1.SemanticType_TIMESTAMP, Datatype: gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND},
+			{ColumnName: "value", SemanticType: gpbv1.SemanticType(99), Datatype: gpbv1.ColumnDataType_STRING},
+		},
+		Rows: []*gpbv1.Row{{Values: []*gpbv1.Value{
+			{ValueData: &gpbv1.Value_TimestampMillisecondValue{TimestampMillisecondValue: 1}},
+			{ValueData: &gpbv1.Value_StringValue{StringValue: "v"}},
+		}}},
+	}
+	record, err := types.NewArrowConverter().ToArrow(rows)
+	require.NoError(t, err)
+	defer record.Release()
+
+	_, err = applyAutoCreateMetadata(record, rows.Schema, &AutoCreateSchema{
+		Columns: []AutoCreateColumn{TimestampColumn("ts")},
+	})
+	require.ErrorContains(t, err, "unsupported semantic type")
+}
+
+func TestApplyAutoCreateMetadataRejectsDuplicateWrittenColumns(t *testing.T) {
+	rows := &gpbv1.Rows{
+		Schema: []*gpbv1.ColumnSchema{
+			{ColumnName: "ts", SemanticType: gpbv1.SemanticType_TIMESTAMP, Datatype: gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND},
+			{ColumnName: "ts", SemanticType: gpbv1.SemanticType_FIELD, Datatype: gpbv1.ColumnDataType_TIMESTAMP_MILLISECOND},
+		},
+		Rows: []*gpbv1.Row{{Values: []*gpbv1.Value{
+			{ValueData: &gpbv1.Value_TimestampMillisecondValue{TimestampMillisecondValue: 1}},
+			{ValueData: &gpbv1.Value_TimestampMillisecondValue{TimestampMillisecondValue: 2}},
+		}}},
+	}
+	record, err := types.NewArrowConverter().ToArrow(rows)
+	require.NoError(t, err)
+	defer record.Release()
+
+	_, err = applyAutoCreateMetadata(record, rows.Schema, &AutoCreateSchema{
+		Columns: []AutoCreateColumn{TimestampColumn("ts")},
+	})
+	require.ErrorContains(t, err, "duplicate written column")
 }
 
 // A spec column that differs from the written field only by sanitization still

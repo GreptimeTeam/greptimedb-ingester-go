@@ -17,13 +17,16 @@
 package bulk
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
 	gpbv1 "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/apache/arrow/go/v17/arrow"
 	"github.com/apache/arrow/go/v17/arrow/array"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/GreptimeTeam/greptimedb-ingester-go/util"
 )
@@ -31,6 +34,9 @@ import (
 // Arrow field metadata keys recognized by GreptimeDB Enterprise when
 // auto-creating a missing table for a Flight bulk insert.
 const (
+	autoCreateTableHintKey      = "auto_create_table"
+	autoCreateTableHintMetadata = "x-greptime-hint-auto_create_table"
+	hintsMetadataKey            = "x-greptime-hints"
 	// semanticTypeMetadataKey carries the semantic type of a column. The value
 	// must be "tag", "field" or "timestamp"; exactly one "timestamp" column
 	// becomes the time index of the created table.
@@ -41,6 +47,34 @@ const (
 	// commentMetadataKey carries the column comment.
 	commentMetadataKey = "greptime:comment"
 )
+
+func withAutoCreateTableHint(ctx context.Context) context.Context {
+	md, _ := metadata.FromOutgoingContext(ctx)
+	md = md.Copy()
+
+	if values := md.Get(hintsMetadataKey); len(values) > 0 {
+		md.Set(hintsMetadataKey, upsertAutoCreateTableHint(strings.Join(values, ",")))
+	} else {
+		md.Set(autoCreateTableHintMetadata, "true")
+	}
+	return metadata.NewOutgoingContext(ctx, md)
+}
+
+func upsertAutoCreateTableHint(hints string) string {
+	parts := strings.Split(hints, ",")
+	found := false
+	for i, hint := range parts {
+		key, _, ok := strings.Cut(hint, "=")
+		if ok && strings.TrimSpace(key) == autoCreateTableHintKey {
+			parts[i] = autoCreateTableHintKey + "=true"
+			found = true
+		}
+	}
+	if !found {
+		parts = append(parts, autoCreateTableHintKey+"=true")
+	}
+	return strings.Join(parts, ",")
+}
 
 // AutoCreateColumn describes the schema metadata of a single column needed by
 // GreptimeDB Enterprise to auto-create a missing table during a Flight bulk
@@ -58,9 +92,9 @@ type AutoCreateColumn struct {
 	// Comment is an optional column comment, carried as greptime:comment.
 	Comment string
 	// TypeOverride is an optional GreptimeDB extended data type, carried as
-	// greptime:type, for example "Json". JSON columns are auto-detected from
-	// the written table's schema, so it only needs to be set for columns whose
-	// extended type cannot be inferred from the Arrow type.
+	// greptime:type. Flight bulk auto-create currently supports only "Json",
+	// and the Arrow field must be Binary. JSON columns are auto-detected from
+	// the written table's schema.
 	TypeOverride string
 
 	// semanticType overrides the semantic type declared by the written table's
@@ -97,9 +131,9 @@ type AutoCreateSchema struct {
 	Columns []AutoCreateColumn
 }
 
-// WithAutoCreateSchema configures the bulk writer to attach the given column
-// metadata to the Arrow schema of every written record batch, so that
-// GreptimeDB Enterprise can auto-create the table if it does not exist yet.
+// WithAutoCreateSchema configures the bulk writer to request table auto-create
+// before opening the Flight stream and attach the given column metadata to its
+// Arrow schema, so GreptimeDB Enterprise can create the table if it is missing.
 func WithAutoCreateSchema(schema *AutoCreateSchema) WriterOption {
 	return func(bw *bulkWriter) {
 		bw.autoCreate = schema
@@ -164,11 +198,15 @@ func applyAutoCreateMetadata(
 
 	tableByName := make(map[string]*gpbv1.ColumnSchema, len(columns))
 	for _, col := range columns {
+		if _, duplicate := tableByName[col.ColumnName]; duplicate {
+			return nil, fmt.Errorf("duplicate written column %q", col.ColumnName)
+		}
 		tableByName[col.ColumnName] = col
 	}
 
 	fields := rec.Schema().Fields()
 	enriched := make([]arrow.Field, len(fields))
+	timestampCount := 0
 	for i, field := range fields {
 		enriched[i] = field
 		specCol, inSpec := lookup(field.Name)
@@ -181,20 +219,49 @@ func applyAutoCreateMetadata(
 		if !ok {
 			continue
 		}
-		if semanticType == gpbv1.SemanticType_TIMESTAMP && specCol.TypeOverride != "" {
-			return nil, fmt.Errorf(
-				"column %q is a timestamp and cannot carry a type override",
-				field.Name,
-			)
+		semanticTypeValue, ok := semanticTypeString(semanticType)
+		if !ok {
+			return nil, fmt.Errorf("column %q has unsupported semantic type %d", field.Name, semanticType)
+		}
+		if semanticType == gpbv1.SemanticType_TIMESTAMP {
+			timestampCount++
+			timestampType, ok := field.Type.(*arrow.TimestampType)
+			if !ok || timestampType.TimeZone != "" {
+				return nil, fmt.Errorf(
+					"timestamp column %q must have Arrow timestamp type without timezone",
+					field.Name,
+				)
+			}
+			if specCol.TypeOverride != "" {
+				return nil, fmt.Errorf(
+					"column %q is a timestamp and cannot carry a type override",
+					field.Name,
+				)
+			}
 		}
 
 		metadata := map[string]string{
-			semanticTypeMetadataKey: semanticTypeString(semanticType),
+			semanticTypeMetadataKey: semanticTypeValue,
 		}
-		if specCol.TypeOverride != "" {
-			metadata[typeMetadataKey] = specCol.TypeOverride
-		} else if inTable && tableCol.Datatype == gpbv1.ColumnDataType_JSON {
-			metadata[typeMetadataKey] = "Json"
+		typeOverride := specCol.TypeOverride
+		if typeOverride == "" && inTable && tableCol.Datatype == gpbv1.ColumnDataType_JSON &&
+			semanticType != gpbv1.SemanticType_TIMESTAMP {
+			typeOverride = "Json"
+		}
+		if typeOverride != "" {
+			if typeOverride != "Json" {
+				return nil, fmt.Errorf(
+					"column %q has unsupported type override %q; only Json is supported",
+					field.Name, typeOverride,
+				)
+			}
+			if !arrow.TypeEqual(field.Type, arrow.BinaryTypes.Binary) {
+				return nil, fmt.Errorf(
+					"column %q with Json type override requires Arrow Binary type, got %s",
+					field.Name, field.Type,
+				)
+			}
+			metadata[typeMetadataKey] = typeOverride
 		}
 		if specCol.Comment != "" {
 			metadata[commentMetadataKey] = specCol.Comment
@@ -218,6 +285,12 @@ func applyAutoCreateMetadata(
 			slices.Sorted(maps.Keys(exactByName)),
 		)
 	}
+	if timestampCount != 1 {
+		return nil, fmt.Errorf(
+			"auto-create schema must contain exactly one timestamp column, got %d",
+			timestampCount,
+		)
+	}
 
 	metadata := rec.Schema().Metadata()
 	return array.NewRecord(arrow.NewSchema(enriched, &metadata), rec.Columns(), rec.NumRows()), nil
@@ -237,15 +310,15 @@ func columnSemanticType(
 	return gpbv1.SemanticType_TAG, false
 }
 
-func semanticTypeString(t gpbv1.SemanticType) string {
+func semanticTypeString(t gpbv1.SemanticType) (string, bool) {
 	switch t {
 	case gpbv1.SemanticType_TAG:
-		return "tag"
+		return "tag", true
 	case gpbv1.SemanticType_FIELD:
-		return "field"
+		return "field", true
 	case gpbv1.SemanticType_TIMESTAMP:
-		return "timestamp"
+		return "timestamp", true
 	default:
-		return ""
+		return "", false
 	}
 }

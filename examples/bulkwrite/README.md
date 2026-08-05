@@ -17,7 +17,8 @@ CREATE TABLE bulk_insert_table (
 
 When the target table does not exist yet, GreptimeDB Enterprise can auto-create
 it from the column metadata attached to the Arrow schema of the bulk write. Pass
-`bulk.WithAutoCreateSchema` when creating the bulk writer to enable it:
+`bulk.WithAutoCreateSchema` when creating the bulk writer to attach the schema
+and send the `auto_create_table=true` Flight request hint:
 
 ```go
 response, err := c.client.BulkWriteWithOptions(ctx, data,
@@ -37,7 +38,10 @@ the primary key (in order), exactly one `timestamp` column becomes the time
 index (written non-nullable), and the rest are `field` columns. Semantic types
 default to the ones declared by the table's schema, so only the columns you want
 to override or annotate need to appear in the list. JSON columns are flagged
-automatically with `greptime:type=Json`.
+automatically with `greptime:type=Json` and encoded as Arrow Binary. Other
+extended types (including Vector) are rejected because the server does not
+support them for Flight bulk auto-create. The server must also enable the
+feature globally; the request hint cannot override a disabled server setting.
 
 ## Insert
 

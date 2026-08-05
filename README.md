@@ -128,7 +128,13 @@ balancer's health state so a failed endpoint is avoided on the next pick.
 Enterprise can create it from the column metadata attached to the Arrow schema
 of a bulk write. Pass `bulk.WithAutoCreateSchema` to `BulkWriteWithOptions` (or
 to `bulk.BulkClient.NewBulkWriter`) to declare each column's semantic type
-(`tag`, `field` or `timestamp`) and optional comment. See
+(`tag`, `field` or `timestamp`) and optional comment. The option also sends the
+`auto_create_table=true` Flight request hint before opening the stream. The
+server must have Flight bulk auto-create enabled globally; the request hint
+cannot override a disabled server setting. The schema must contain exactly one
+timezone-free timestamp column; JSON is encoded
+as Arrow Binary with `greptime:type=Json`, while Vector auto-create is not
+supported. See
 [examples/bulkwrite](examples/bulkwrite/README.md) for a full example.
 
 ### Client

@@ -100,7 +100,7 @@ func main() {
 
 	// When the target table does not exist yet, GreptimeDB Enterprise can
 	// auto-create it from the schema metadata attached to the Arrow schema.
-	// Pass the required column metadata when creating the bulk writer.
+	// The option also sends auto_create_table=true before opening the stream.
 	response, err := c.client.BulkWriteWithOptions(context.TODO(), data,
 		bulk.WithAutoCreateSchema(&bulk.AutoCreateSchema{
 			Columns: []bulk.AutoCreateColumn{
