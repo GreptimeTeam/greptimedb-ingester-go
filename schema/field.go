@@ -33,14 +33,20 @@ type Field struct {
 	Name         string             // default is field name
 	SemanticType gpb.SemanticType   // default is field
 	Datatype     gpb.ColumnDataType // default is the value type
+
+	json2 bool
 }
 
 func (f Field) ToColumnSchema() *gpb.ColumnSchema {
-	return &gpb.ColumnSchema{
+	col := &gpb.ColumnSchema{
 		ColumnName:   f.Name,
 		SemanticType: f.SemanticType,
 		Datatype:     f.Datatype,
 	}
+	if f.json2 {
+		types.MarkJSON2(col)
+	}
+	return col
 }
 
 func newField(columnName string, semanticType gpb.SemanticType, datatype gpb.ColumnDataType) *Field {
@@ -73,19 +79,26 @@ func parseField(structField reflect.StructField) (*Field, error) {
 		semanticType = gpb.SemanticType_TIMESTAMP
 	}
 
-	typ, err := parseType(structField.Type)
+	// An explicit type skips Go type inference, so JSON2 fields can be maps or
+	// structs.
+	var typ gpb.ColumnDataType
+	json2 := false
+	if val, ok := tags["TYPE"]; ok {
+		typ, err = types.ParseColumnType(val, tags["PRECISION"])
+		json2 = strings.ToUpper(val) == types.JSON2.String()
+	} else {
+		typ, err = parseType(structField.Type)
+	}
 	if err != nil {
 		return nil, err
 	}
-	if val, ok := tags["TYPE"]; ok {
-		typ_, err := types.ParseColumnType(val, tags["PRECISION"])
-		if err != nil {
-			return nil, err
-		}
-		typ = typ_
+	if json2 && semanticType != gpb.SemanticType_FIELD {
+		return nil, fmt.Errorf("JSON2 is only supported for field columns, field %q", structField.Name)
 	}
 
-	return newField(columnName, semanticType, typ), nil
+	field := newField(columnName, semanticType, typ)
+	field.json2 = json2
+	return field, nil
 }
 
 func parseTag(structField reflect.StructField) map[string]string {
@@ -184,13 +197,19 @@ func parseIntOrTimeValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value,
 	return nil, fmt.Errorf("unsupported type %T of %#v", val, val)
 }
 
-func parseValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value, error) {
+func parseValue(col *gpb.ColumnSchema, val reflect.Value) (*gpb.Value, error) {
+	// Pass the field as is: dereferencing it would skip a MarshalJSON
+	// defined on the pointer receiver.
+	if types.IsJSON2(col) {
+		return cell.BuildJSON2(val.Interface())
+	}
+
 	val = reflect.Indirect(val)
 	if !val.IsValid() {
 		return nil, nil
 	}
 
-	switch typ {
+	switch typ := col.Datatype; typ {
 	case gpb.ColumnDataType_INT8, gpb.ColumnDataType_INT16, gpb.ColumnDataType_INT32, gpb.ColumnDataType_INT64:
 		if !val.CanInt() {
 			return nil, fmt.Errorf("%#v is not compatible with Int", val)

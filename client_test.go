@@ -20,6 +20,7 @@ package greptime
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
@@ -31,9 +32,11 @@ import (
 	"github.com/ory/dockertest/v3"
 	dc "github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
+	ingesterContext "github.com/GreptimeTeam/greptimedb-ingester-go/context"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
 	tbl "github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
@@ -83,14 +86,12 @@ type datatype struct {
 	TIMESTAMP_SECOND      time.Time `gorm:"column:timestamp_second"`
 	TIMESTAMP_MILLISECOND time.Time `gorm:"column:timestamp_millisecond"`
 	TIMESTAMP_MICROSECOND time.Time `gorm:"column:timestamp_microsecond"`
-	TIMESTAMP_NANOSECOND  time.Time `gorm:"column:timestamp_nanosecond"`
 
 	DATE_INT                  time.Time `gorm:"column:date_int"`
 	DATETIME_INT              time.Time `gorm:"column:datetime_int"`
 	TIMESTAMP_SECOND_INT      time.Time `gorm:"column:timestamp_second_int"`
 	TIMESTAMP_MILLISECOND_INT time.Time `gorm:"column:timestamp_millisecond_int"`
 	TIMESTAMP_MICROSECOND_INT time.Time `gorm:"column:timestamp_microsecond_int"`
-	TIMESTAMP_NANOSECOND_INT  time.Time `gorm:"column:timestamp_nanosecond_int"`
 
 	TS time.Time `gorm:"column:ts"`
 }
@@ -150,7 +151,9 @@ func (p *Mysql) Query(sql string) ([]monitor, error) {
 
 func (p *Mysql) AllDatatypes() ([]datatype, error) {
 	var datatypes []datatype
-	err := p.DB.Find(&datatypes).Error
+	// Select only the struct fields: the driver fails on nanosecond
+	// timestamp columns, see TestInsertAllDataTypes.
+	err := p.DB.Session(&gorm.Session{QueryFields: true}).Find(&datatypes).Error
 	return datatypes, err
 }
 
@@ -708,7 +711,8 @@ func TestInsertAllDataTypes(t *testing.T) {
 	loc, err := time.LoadLocation(timezone)
 	assert.Nil(t, err)
 
-	time_ := time.Now().In(loc)
+	// Non-zero sub-microsecond digits, which time.Now() lacks on some platforms.
+	time_ := time.Now().In(loc).Truncate(time.Microsecond).Add(123 * time.Nanosecond)
 	date_int := time_.Unix() / 86400
 
 	INT8 := 1
@@ -783,8 +787,8 @@ func TestInsertAllDataTypes(t *testing.T) {
 	assert.Empty(t, resp.GetHeader().GetStatus().GetErrMsg())
 
 	datatypes, err := db.AllDatatypes()
-	assert.Nil(t, err)
-	assert.Equal(t, 1, len(datatypes))
+	require.NoError(t, err)
+	require.Len(t, datatypes, 1)
 	result := datatypes[0]
 
 	assert.EqualValues(t, INT8, result.INT8)
@@ -807,18 +811,23 @@ func TestInsertAllDataTypes(t *testing.T) {
 	assert.Equal(t, time_.UnixMilli(), result.TIMESTAMP_MILLISECOND.UnixMilli())
 	assert.Equal(t, time_.UnixMicro(), result.TIMESTAMP_MICROSECOND.UnixMicro())
 
-	// MySQL protocol only supports microsecond precision for TIMESTAMP
-	assert.EqualValues(t, time_.UnixNano()/1000, result.TIMESTAMP_NANOSECOND.UnixNano()/1000)
 
 	assert.Equal(t, time_.Format("2006-01-02"), result.DATE_INT.Format("2006-01-02"))
 	assert.Equal(t, time_.UnixMicro(), result.DATETIME_INT.UnixMicro())
 	assert.Equal(t, time_.Unix(), result.TIMESTAMP_SECOND_INT.Unix())
 	assert.Equal(t, time_.UnixMilli(), result.TIMESTAMP_MILLISECOND_INT.UnixMilli())
 	assert.Equal(t, time_.UnixMicro(), result.TIMESTAMP_MICROSECOND_INT.UnixMicro())
-
-	// MySQL protocol only supports microsecond precision for TIMESTAMP
-	assert.EqualValues(t, time_.UnixNano()/1000, result.TIMESTAMP_NANOSECOND_INT.UnixNano()/1000)
 	assert.EqualValues(t, JSON, result.JSON)
+
+	// GreptimeDB returns TIMESTAMP(9) with nine fractional digits over MySQL,
+	// but go-sql-driver/mysql with parseTime=True only parses up to
+	// microseconds, so read nanosecond columns as epoch integers.
+	var tsNano, tsNanoInt int64
+	require.NoError(t, db.DB.Raw(fmt.Sprintf(
+		"SELECT CAST(timestamp_nanosecond AS BIGINT), CAST(timestamp_nanosecond_int AS BIGINT) FROM %s",
+		datatypesTableName)).Row().Scan(&tsNano, &tsNanoInt))
+	assert.Equal(t, time_.UnixNano(), tsNano)
+	assert.Equal(t, time_.UnixNano(), tsNanoInt)
 }
 
 func TestStreamWrite(t *testing.T) {
@@ -1344,4 +1353,52 @@ func TestMultiEndpointWrite(t *testing.T) {
 	hcResp, err := multi.HealthCheck(context.Background())
 	assert.Nil(t, err)
 	assert.NotNil(t, hcResp)
+}
+
+func TestWriteJSON2(t *testing.T) {
+	tableName := fmt.Sprintf("json2_logs_%d", randomId())
+	payloads := []string{
+		"null",
+		`{"nested":{"items":[1,"two",null,{"ok":false}]},"value":42}`,
+		`{"nested":{"other":true},"value":"changed"}`,
+		"{}",
+		`{"value":null}`,
+	}
+
+	// The first request only carries NULL, so the JSON2 column type of the
+	// auto-created table must come from the schema, not from the values.
+	for i, payload := range payloads {
+		table, err := tbl.New(tableName)
+		require.NoError(t, err)
+		require.NoError(t, table.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND))
+		require.NoError(t, table.AddFieldColumn("payload", types.JSON2))
+		require.NoError(t, table.AddRow(i, payload))
+
+		ctx := context.Background()
+		if i == 0 {
+			ctx = ingesterContext.New(ctx, ingesterContext.WithHint([]*ingesterContext.Hint{{Key: "append_mode", Value: "true"}}))
+		}
+		resp, err := cli.Write(ctx, table)
+		require.NoError(t, err)
+		assert.Equal(t, uint32(1), resp.GetAffectedRows().GetValue())
+	}
+
+	rows, err := db.DB.Raw(fmt.Sprintf("SELECT payload FROM %s ORDER BY ts", tableName)).Rows()
+	require.NoError(t, err)
+	defer rows.Close()
+	for _, payload := range payloads {
+		require.True(t, rows.Next())
+		var got sql.NullString
+		require.NoError(t, rows.Scan(&got))
+		if payload == "null" {
+			assert.False(t, got.Valid)
+		} else {
+			assert.JSONEq(t, payload, got.String)
+		}
+	}
+	assert.False(t, rows.Next())
+
+	var name, ddl string
+	require.NoError(t, db.DB.Raw(fmt.Sprintf("SHOW CREATE TABLE %s", tableName)).Row().Scan(&name, &ddl))
+	assert.Contains(t, ddl, "JSON2")
 }

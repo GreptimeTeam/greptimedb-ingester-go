@@ -23,7 +23,9 @@ import (
 
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/cell"
+	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestParseSchemaWithoutTags(t *testing.T) {
@@ -1069,4 +1071,63 @@ func TestParseSchemaWithIgnoreFields(t *testing.T) {
 			assertValue(row)
 		}
 	}
+}
+
+func TestParseJSON2(t *testing.T) {
+	type log struct {
+		Payload map[string]any `greptime:"field;column:payload;type:json2"`
+		Text    *string        `greptime:"field;column:text;type:JSON2"`
+		Ts      time.Time      `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
+	}
+
+	text := `{"b":[1,"x"]}`
+	tbl, err := Parse([]log{
+		{Payload: map[string]any{"a": -1}, Text: &text, Ts: time.UnixMilli(1)},
+		{Ts: time.UnixMilli(2)},
+	})
+	assert.Nil(t, err)
+
+	req, err := tbl.ToInsertRequest()
+	assert.Nil(t, err)
+	assert.True(t, types.IsJSON2(req.Rows.Schema[0]))
+	assert.True(t, types.IsJSON2(req.Rows.Schema[1]))
+	assert.False(t, types.IsJSON2(req.Rows.Schema[2]))
+
+	rows := req.Rows.Rows
+	assert.Equal(t, int64(-1), rows[0].Values[0].GetJsonValue().GetObject().GetEntries()[0].GetValue().GetInt())
+	assert.Equal(t, "x", rows[0].Values[1].GetJsonValue().GetObject().GetEntries()[0].GetValue().GetArray().GetItems()[1].GetStr())
+	assert.Nil(t, rows[1].Values[0].GetValueData())
+	assert.Nil(t, rows[1].Values[1].GetValueData())
+
+	type badTag struct {
+		Payload string `greptime:"tag;type:json2"`
+	}
+	_, err = Parse(badTag{Payload: "{}"})
+	assert.Error(t, err)
+}
+
+type redactedPayload struct {
+	Secret string
+}
+
+func (*redactedPayload) MarshalJSON() ([]byte, error) {
+	return []byte(`{"redacted":true}`), nil
+}
+
+func TestParseJSON2PointerMarshaler(t *testing.T) {
+	type log struct {
+		Payload *redactedPayload `greptime:"field;column:payload;type:json2"`
+		Ts      time.Time        `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
+	}
+
+	payload := &redactedPayload{Secret: "must not be serialized"}
+	want, err := cell.BuildJSON2(payload)
+	assert.Nil(t, err)
+
+	tbl, err := Parse([]log{{Payload: payload, Ts: time.UnixMilli(1)}, {Ts: time.UnixMilli(2)}})
+	assert.Nil(t, err)
+	req, err := tbl.ToInsertRequest()
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(want, req.Rows.Rows[0].Values[0]), "got %v", req.Rows.Rows[0].Values[0])
+	assert.Nil(t, req.Rows.Rows[1].Values[0].GetValueData())
 }

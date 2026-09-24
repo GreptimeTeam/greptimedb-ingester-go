@@ -98,6 +98,9 @@ const (
 	TIMESTAMP ColumnType = 104
 	BYTES     ColumnType = 105 // eq BINARY
 	BOOL      ColumnType = 106 // eq BOOLEAN
+	// JSON2 is sent as JSON with a native JSON type extension. Field columns
+	// only; not supported by bulk writes.
+	JSON2 ColumnType = 107
 )
 
 func (type_ ColumnType) String() string {
@@ -154,6 +157,8 @@ func (type_ ColumnType) String() string {
 		return "TIMESTAMP_NANOSECOND"
 	case JSON:
 		return "JSON"
+	case JSON2:
+		return "JSON2"
 	default:
 		return "UNKNOWN"
 	}
@@ -201,7 +206,7 @@ func ParseColumnType(type_, precision string) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_TIMESTAMP_MICROSECOND, nil
 	case TIMESTAMP_NANOSECOND.String():
 		return gpb.ColumnDataType_TIMESTAMP_NANOSECOND, nil
-	case JSON.String():
+	case JSON.String(), JSON2.String():
 		return gpb.ColumnDataType_JSON, nil
 	default:
 		return 0, fmt.Errorf("parse: unsupported column type %q", type_)
@@ -248,7 +253,7 @@ func ConvertType(type_ ColumnType) (gpb.ColumnDataType, error) {
 		return gpb.ColumnDataType_TIMESTAMP_MICROSECOND, nil
 	case TIMESTAMP_NANOSECOND:
 		return gpb.ColumnDataType_TIMESTAMP_NANOSECOND, nil
-	case JSON:
+	case JSON, JSON2:
 		return gpb.ColumnDataType_JSON, nil
 	default:
 		return 0, fmt.Errorf("convert: unsupported column type %q", type_.String())
