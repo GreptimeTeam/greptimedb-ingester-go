@@ -164,7 +164,7 @@ func (s *Schema) parseValues(input any) error {
 
 	for i, structField := range processingFields {
 		field := s.fields[i]
-		value, err := parseValue(field.Datatype, val.FieldByName(structField.Name))
+		value, err := parseValue(field, val.FieldByName(structField.Name))
 		if err != nil {
 			return err
 		}

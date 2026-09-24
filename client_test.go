@@ -20,6 +20,7 @@ package greptime
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
@@ -31,9 +32,11 @@ import (
 	"github.com/ory/dockertest/v3"
 	dc "github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
+	ingesterContext "github.com/GreptimeTeam/greptimedb-ingester-go/context"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/loadbalancer"
 	tbl "github.com/GreptimeTeam/greptimedb-ingester-go/table"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
@@ -1344,4 +1347,52 @@ func TestMultiEndpointWrite(t *testing.T) {
 	hcResp, err := multi.HealthCheck(context.Background())
 	assert.Nil(t, err)
 	assert.NotNil(t, hcResp)
+}
+
+func TestWriteJSON2(t *testing.T) {
+	tableName := fmt.Sprintf("json2_logs_%d", randomId())
+	payloads := []string{
+		"null",
+		`{"nested":{"items":[1,"two",null,{"ok":false}]},"value":42}`,
+		`{"nested":{"other":true},"value":"changed"}`,
+		"{}",
+		`{"value":null}`,
+	}
+
+	// The first request only carries NULL, so the JSON2 column type of the
+	// auto-created table must come from the schema, not from the values.
+	for i, payload := range payloads {
+		table, err := tbl.New(tableName)
+		require.NoError(t, err)
+		require.NoError(t, table.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND))
+		require.NoError(t, table.AddFieldColumn("payload", types.JSON2))
+		require.NoError(t, table.AddRow(i, payload))
+
+		ctx := context.Background()
+		if i == 0 {
+			ctx = ingesterContext.New(ctx, ingesterContext.WithHint([]*ingesterContext.Hint{{Key: "append_mode", Value: "true"}}))
+		}
+		resp, err := cli.Write(ctx, table)
+		require.NoError(t, err)
+		assert.Equal(t, uint32(1), resp.GetAffectedRows().GetValue())
+	}
+
+	rows, err := db.DB.Raw(fmt.Sprintf("SELECT payload FROM %s ORDER BY ts", tableName)).Rows()
+	require.NoError(t, err)
+	defer rows.Close()
+	for _, payload := range payloads {
+		require.True(t, rows.Next())
+		var got sql.NullString
+		require.NoError(t, rows.Scan(&got))
+		if payload == "null" {
+			assert.False(t, got.Valid)
+		} else {
+			assert.JSONEq(t, payload, got.String)
+		}
+	}
+	assert.False(t, rows.Next())
+
+	var name, ddl string
+	require.NoError(t, db.DB.Raw(fmt.Sprintf("SHOW CREATE TABLE %s", tableName)).Row().Scan(&name, &ddl))
+	assert.Contains(t, ddl, "JSON2")
 }

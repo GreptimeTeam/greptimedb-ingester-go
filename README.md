@@ -305,6 +305,7 @@ The **GreptimeDB** column is for the datatypes supported in library, and the **G
 | TIMESTAMP_MICROSECOND            | *Int* or time.Time | 64-bit timestamp values with microseconds precision, range: [-262144-01-01 00:00:00.000000, +262143-12-31 23:59:59.999999] |
 | TIMESTAMP_NANOSECOND             | *Int* or time.Time | 64-bit timestamp values with nanoseconds precision, range: [1677-09-21 00:12:43.145225, 2262-04-11 23:47:16.854775807]     |
 | JSON                             | string             | JSON data                                                                                                                  |
+| JSON2                            | string or any value accepted by `encoding/json` | JSON object or `null`, sent as native JSON values; JSON `null` is written as SQL NULL. Field columns only; not supported by bulk writes. Requires GreptimeDB v1.2.1+ and `append_mode=true` when the table is created |
 
 NOTE: *Int* is for all of Integer and Unsigned Integer in Go
 

@@ -48,8 +48,16 @@ func New(name string) (*Table, error) {
 	return &Table{name: name, sanitate_needed: true}, nil
 }
 
-func (t *Table) addColumn(name string, semanticType gpb.SemanticType, dataType gpb.ColumnDataType) error {
-	name, err := t.sanitate_if_needed(name)
+func (t *Table) addColumn(name string, semanticType gpb.SemanticType, type_ types.ColumnType) error {
+	dataType, err := types.ConvertType(type_)
+	if err != nil {
+		return err
+	}
+	if type_ == types.JSON2 && semanticType != gpb.SemanticType_FIELD {
+		return fmt.Errorf("JSON2 is only supported for field columns, column %q", name)
+	}
+
+	name, err = t.sanitate_if_needed(name)
 	if err != nil {
 		return err
 	}
@@ -63,6 +71,9 @@ func (t *Table) addColumn(name string, semanticType gpb.SemanticType, dataType g
 		SemanticType: semanticType,
 		Datatype:     dataType,
 	}
+	if type_ == types.JSON2 {
+		types.MarkJSON2(column)
+	}
 	t.columnsSchema = append(t.columnsSchema, column)
 
 	return nil
@@ -73,12 +84,7 @@ func (t *Table) addColumn(name string, semanticType gpb.SemanticType, dataType g
 //
 // [Data Model]: https://docs.greptime.com/user-guide/concepts/data-model
 func (t *Table) AddTagColumn(name string, type_ types.ColumnType) error {
-	typ, err := types.ConvertType(type_)
-	if err != nil {
-		return err
-	}
-
-	return t.addColumn(name, gpb.SemanticType_TAG, typ)
+	return t.addColumn(name, gpb.SemanticType_TAG, type_)
 }
 
 // AddFieldColumn helps to add the field column. You can find details in
@@ -86,12 +92,7 @@ func (t *Table) AddTagColumn(name string, type_ types.ColumnType) error {
 //
 // [Data Model]: https://docs.greptime.com/user-guide/concepts/data-model
 func (t *Table) AddFieldColumn(name string, type_ types.ColumnType) error {
-	typ, err := types.ConvertType(type_)
-	if err != nil {
-		return err
-	}
-
-	return t.addColumn(name, gpb.SemanticType_FIELD, typ)
+	return t.addColumn(name, gpb.SemanticType_FIELD, type_)
 }
 
 // AddTimestampColumn helps to add the timestamp column. A table can only
@@ -99,12 +100,7 @@ func (t *Table) AddFieldColumn(name string, type_ types.ColumnType) error {
 //
 // [Data Model]: https://docs.greptime.com/user-guide/concepts/data-model
 func (t *Table) AddTimestampColumn(name string, type_ types.ColumnType) error {
-	typ, err := types.ConvertType(type_)
-	if err != nil {
-		return err
-	}
-
-	return t.addColumn(name, gpb.SemanticType_TIMESTAMP, typ)
+	return t.addColumn(name, gpb.SemanticType_TIMESTAMP, type_)
 }
 
 func (t *Table) addRow(row *gpb.Row) error {
@@ -149,8 +145,14 @@ func (t *Table) AddRow(inputs ...any) error {
 	}
 
 	for i, input := range inputs {
-		dataType := t.columnsSchema[i].Datatype
-		val, err := cell.New(input, dataType).Build()
+		column := t.columnsSchema[i]
+		var val *gpb.Value
+		var err error
+		if types.IsJSON2(column) {
+			val, err = cell.BuildJSON2(input)
+		} else {
+			val, err = cell.New(input, column.Datatype).Build()
+		}
 		if err != nil {
 			return err
 		}
