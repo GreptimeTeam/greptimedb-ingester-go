@@ -25,6 +25,7 @@ import (
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/cell"
 	"github.com/GreptimeTeam/greptimedb-ingester-go/table/types"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestParseSchemaWithoutTags(t *testing.T) {
@@ -1103,4 +1104,30 @@ func TestParseJSON2(t *testing.T) {
 	}
 	_, err = Parse(badTag{Payload: "{}"})
 	assert.Error(t, err)
+}
+
+type redactedPayload struct {
+	Secret string
+}
+
+func (*redactedPayload) MarshalJSON() ([]byte, error) {
+	return []byte(`{"redacted":true}`), nil
+}
+
+func TestParseJSON2PointerMarshaler(t *testing.T) {
+	type log struct {
+		Payload *redactedPayload `greptime:"field;column:payload;type:json2"`
+		Ts      time.Time        `greptime:"timestamp;column:ts;type:timestamp;precision:millisecond"`
+	}
+
+	payload := &redactedPayload{Secret: "must not be serialized"}
+	want, err := cell.BuildJSON2(payload)
+	assert.Nil(t, err)
+
+	tbl, err := Parse([]log{{Payload: payload, Ts: time.UnixMilli(1)}, {Ts: time.UnixMilli(2)}})
+	assert.Nil(t, err)
+	req, err := tbl.ToInsertRequest()
+	assert.Nil(t, err)
+	assert.True(t, proto.Equal(want, req.Rows.Rows[0].Values[0]), "got %v", req.Rows.Rows[0].Values[0])
+	assert.Nil(t, req.Rows.Rows[1].Values[0].GetValueData())
 }

@@ -198,13 +198,15 @@ func parseIntOrTimeValue(typ gpb.ColumnDataType, val reflect.Value) (*gpb.Value,
 }
 
 func parseValue(col *gpb.ColumnSchema, val reflect.Value) (*gpb.Value, error) {
+	// Pass the field as is: dereferencing it would skip a MarshalJSON
+	// defined on the pointer receiver.
+	if types.IsJSON2(col) {
+		return cell.BuildJSON2(val.Interface())
+	}
+
 	val = reflect.Indirect(val)
 	if !val.IsValid() {
 		return nil, nil
-	}
-
-	if types.IsJSON2(col) {
-		return cell.BuildJSON2(val.Interface())
 	}
 
 	switch typ := col.Datatype; typ {
