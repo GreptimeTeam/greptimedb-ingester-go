@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	gpb "github.com/GreptimeTeam/greptime-proto/go/greptime/v1"
+	"github.com/apache/arrow/go/v17/arrow/array"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -52,4 +53,35 @@ func TestJSON2Column(t *testing.T) {
 	assert.Equal(t, uint64(1), rows[0].Values[1].GetJsonValue().GetObject().GetEntries()[0].GetValue().GetUint())
 	assert.Equal(t, `{"a":1}`, rows[0].Values[2].GetStringValue())
 	assert.Nil(t, rows[1].Values[1].GetValueData())
+}
+
+func TestBulkConversionPreservesNullFields(t *testing.T) {
+	tbl, err := New("sensor_readings")
+	require.NoError(t, err)
+	require.NoError(t, tbl.AddTimestampColumn("ts", types.TIMESTAMP_MILLISECOND))
+	require.NoError(t, tbl.AddFieldColumn("reading", types.INT64))
+	require.NoError(t, tbl.AddFieldColumn("label", types.STRING))
+	require.NoError(t, tbl.AddFieldColumn("active", types.BOOLEAN))
+	require.NoError(t, tbl.AddRow(int64(1), nil, nil, nil))
+	require.NoError(t, tbl.AddRow(int64(2), int64(0), "", false))
+	require.NoError(t, tbl.AddRow(int64(3), int64(42), "sensor-a", true))
+
+	record, err := types.NewArrowConverter().ToArrow(tbl.GetRows())
+	require.NoError(t, err)
+	defer record.Release()
+
+	for _, column := range record.Columns()[1:] {
+		assert.True(t, column.IsNull(0), "missing value in %s", column.DataType())
+		assert.False(t, column.IsNull(1), "explicit zero in %s", column.DataType())
+		assert.False(t, column.IsNull(2), "ordinary value in %s", column.DataType())
+	}
+	readings := record.Column(1).(*array.Int64)
+	labels := record.Column(2).(*array.String)
+	activity := record.Column(3).(*array.Boolean)
+	assert.Equal(t, int64(0), readings.Value(1))
+	assert.Empty(t, labels.Value(1))
+	assert.False(t, activity.Value(1))
+	assert.Equal(t, int64(42), readings.Value(2))
+	assert.Equal(t, "sensor-a", labels.Value(2))
+	assert.True(t, activity.Value(2))
 }

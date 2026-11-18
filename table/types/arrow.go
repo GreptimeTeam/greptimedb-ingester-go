@@ -168,7 +168,8 @@ func (c *ArrowConverter) convertToArrowType(dt gpbv1.ColumnDataType) (arrow.Data
 // fillValue populates an Arrow builder with data from a GreptimeDB value.
 // It handles null values and type-specific conversions appropriately.
 func (c *ArrowConverter) fillValue(builder array.Builder, value *gpbv1.Value, dataType gpbv1.ColumnDataType) error {
-	if value == nil {
+	// Table.AddRow represents SQL NULL as a value with no oneof field set.
+	if value.GetValueData() == nil {
 		builder.AppendNull()
 		return nil
 	}
